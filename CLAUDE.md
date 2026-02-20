@@ -4,6 +4,14 @@ React SPA that transforms free-form Russian psychiatric notes into structured cl
 documents using LLM APIs. Clinician pastes notes → selects document type → gets formatted
 output ready for medical records.
 
+## Implementation Status
+
+**This is a greenfield project. Currently only documentation exists — no source code,
+no configuration files, no dependencies are present in the repository.**
+
+The files described in the "Project Structure" section are the **target state**,
+not the current state. When implementing, create them according to the specifications below.
+
 ## Tech Stack (pinned)
 
 - React 18 + TypeScript (strict mode)
@@ -22,6 +30,111 @@ output ready for medical records.
 - Create separate CSS files — all styling is Tailwind utility classes
 - Add any npm dependency not listed here without asking first
 - Use class components
+
+## Development Setup (Bootstrap from Scratch)
+
+When starting implementation in an empty repo:
+
+```bash
+# 1. Scaffold the React + TypeScript + Vite project
+npm create vite@latest . -- --template react-ts
+
+# 2. Install Tailwind CSS
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+
+# 3. Install Cloudflare Workers tooling (worker directory only)
+cd worker && npm init -y && npm install -D wrangler typescript && cd ..
+
+# 4. Create environment config
+cp .env.example .env.local
+# Edit .env.local: VITE_WORKER_URL=http://localhost:8787
+```
+
+Key `package.json` scripts expected:
+```json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  }
+}
+```
+
+`tsconfig.json` must use strict mode:
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  }
+}
+```
+
+`tailwind.config.js`:
+```js
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: { extend: {} },
+  plugins: [],
+}
+```
+
+`index.html` title must be `ПНД.doc`.
+
+## Development Workflow
+
+### Running locally
+
+```bash
+# Terminal 1 — start the Cloudflare Worker proxy
+cd worker && npx wrangler dev
+
+# Terminal 2 — start the Vite dev server
+npm run dev
+```
+
+App runs at `http://localhost:5173`. Worker runs at `http://localhost:8787`.
+`.env.local` must have `VITE_WORKER_URL=http://localhost:8787` for local dev.
+
+### Type checking
+
+```bash
+npm run type-check
+```
+
+No test framework is configured — validate correctness by running the app and
+exercising each document type with a real or test API key.
+
+### Production build
+
+```bash
+npm run build       # outputs to dist/
+```
+
+Deploy `dist/` to any static host (Cloudflare Pages, Vercel, Netlify).
+
+### Deploying the worker
+
+```bash
+cd worker
+npx wrangler login   # one-time auth
+npx wrangler deploy  # deploys to workers.dev
+```
+
+After deploy, update `VITE_WORKER_URL` in your deployment environment.
 
 ## Document Types
 
@@ -236,6 +349,8 @@ Dynamically imported per document type (Vite code-split). If an `examples.json` 
 empty or missing, show warning in status bar: "Примеры не найдены для этого типа документа."
 and proceed with zero-shot (no examples in prompt).
 
+All example data must be **synthetic** — no real patient data.
+
 ## Token Estimation (`/src/utils/tokenEstimator.ts`)
 
 ```typescript
@@ -363,7 +478,71 @@ All Russian. Displayed in status bar.
 | Malformed LLM output | "Возможны ошибки форматирования." | Show raw output, let user edit |
 | No examples for doc type | "Примеры не найдены. Качество может быть ниже." | Proceed zero-shot |
 
+## AI Assistant Implementation Guide
+
+### Recommended Implementation Order
+
+Build in this sequence to keep each step testable in the browser:
+
+1. **Project scaffold** — `npm create vite`, Tailwind, tsconfig strict mode
+2. **Cloudflare Worker** (`/worker/index.ts`) — proxy first so API calls work
+3. **Provider types + registry** — `types.ts`, `registry.ts`, then each adapter
+4. **`proxyFetch` utility** — needed by all adapters
+5. **Token estimator** — simple, no dependencies
+6. **Prompt templates** — static string exports, no logic
+7. **Example bank JSON files** — create with at least 1 synthetic example each
+8. **`AppContext`** — state shape, reducer, actions
+9. **`useStreamingResponse` hook** — streaming + abort logic
+10. **`useTokenBudget` hook** — budget calculation and example reduction
+11. **UI components** — `App`, `InputPanel`, `OutputPanel`, `SettingsModal`, `StatusBar`, `TokenBudget`
+12. **`clipboard` utility** — last, only needed for copy button
+
+### State Shape
+
+The `AppContext` reducer should cover at minimum:
+
+```typescript
+type AppState = {
+  settings: ProviderSettings | null;   // null = not configured
+  docType: DocTypeKey;                 // 'pervichniy' | 'povtorniy' | 'vk' | 'msek'
+  inputText: string;
+  outputText: string;
+  isStreaming: boolean;
+  statusMessage: string | null;
+  settingsOpen: boolean;
+  exampleCount: number;                // from settings, default 3
+};
+```
+
+Settings are persisted to `localStorage` under a single key (e.g. `pnd-doc-settings`).
+All other state is ephemeral.
+
+### Key Conventions
+
+- **All user-visible strings in Russian.** No English in the UI.
+- **No `any` types.** TypeScript strict mode is non-negotiable.
+- **No direct `fetch()` to LLM APIs.** Always go through `proxyFetch`.
+- **No non-streaming code paths.** Every generation request uses SSE.
+- **Tailwind only for styling.** No inline style objects, no CSS files.
+- **Functional components only.** No class components.
+- **Settings persisted, clinical content not.** One localStorage key for settings; nothing else persisted.
+- **Error messages are states, not thrown exceptions.** Catch errors in hooks/utils, set `statusMessage` in context.
+- **`AbortController` must be cleaned up.** Abort on unmount and on new generation request.
+
+### Common Pitfalls to Avoid
+
+- Do NOT pass the API key as a query param for non-Gemini providers.
+- Do NOT put Anthropic's system prompt inside the `messages` array.
+- Do NOT buffer the entire stream before rendering — render each chunk as it arrives.
+- Do NOT call `validateKey` on every keystroke in the settings form — only on button click.
+- Do NOT use `useEffect` to sync localStorage — do it inside the reducer's `SAVE_SETTINGS` action.
+- Do NOT forget `signal` propagation from `AbortController` through to `proxyFetch`.
+- The `isMaxTokensTruncation` check applies to the **final** chunk only; intermediate chunks return `null`.
+
 ## Project Structure
+
+The following is the **target file layout** once implementation is complete.
+Currently only `CLAUDE.md` and `README.md` exist.
 
 ```
 /
@@ -406,13 +585,14 @@ All Russian. Displayed in status bar.
 │   ├── index.ts
 │   └── wrangler.toml
 ├── .env.example              # VITE_WORKER_URL=http://localhost:8787
+├── .env.local                # not committed — local overrides
 ├── index.html
 ├── vite.config.ts
 ├── tailwind.config.js
 ├── tsconfig.json
 ├── package.json
-├── ARCHITECTURE.md
-└── Claude.md
+├── CLAUDE.md
+└── README.md
 ```
 
 ## Privacy
