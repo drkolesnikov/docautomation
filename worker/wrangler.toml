@@ -1,0 +1,6 @@
+name = "pnd-doc-proxy"
+main = "index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+ALLOWED_HOSTS = "api.anthropic.com,api.openai.com,api.deepseek.com,generativelanguage.googleapis.com,llm.api.cloud.yandex.net"
