@@ -76,6 +76,7 @@ export function useEditStreaming() {
         const decoder = new TextDecoder();
         let buffer = '';
         let accumulated = '';
+        let lastChunk = '';
         const isYandex = settings.provider === 'yandexgpt';
 
         // eslint-disable-next-line no-constant-condition
@@ -100,6 +101,7 @@ export function useEditStreaming() {
 
             if (dataContent === undefined || dataContent.trim() === '[DONE]') continue;
 
+            lastChunk = dataContent;
             const parsed = adapter.parseStreamChunk(dataContent);
             if (parsed !== null) {
               if (isYandex) {
@@ -120,6 +122,7 @@ export function useEditStreaming() {
           else if (trimmed.startsWith('data:')) dataContent = trimmed.slice(5);
 
           if (dataContent !== undefined && dataContent.trim() !== '[DONE]') {
+            lastChunk = dataContent;
             const parsed = adapter.parseStreamChunk(dataContent);
             if (parsed !== null) {
               if (isYandex) {
@@ -130,6 +133,14 @@ export function useEditStreaming() {
               dispatch({ type: 'SET_PENDING_EDIT', payload: accumulated });
             }
           }
+        }
+
+        // Warn if the edit was cut short by max_tokens
+        if (lastChunk && adapter.isMaxTokensTruncation(lastChunk)) {
+          dispatch({
+            type: 'SET_STATUS',
+            payload: 'Правка может быть неполной — текст слишком длинный. Попробуйте выделить меньший фрагмент.',
+          });
         }
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError') {
@@ -152,8 +163,9 @@ export function useEditStreaming() {
   const editFragment = useCallback(
     (fullDocument: string, fragment: string, instruction: string) => {
       const userMessage = buildFragmentEditMessage(fullDocument, fragment, instruction);
-      // Output budget: at least 500 tokens, at most 2× the fragment's estimated tokens
-      const maxOutputTokens = Math.max(500, estimateTokens(fragment) * 2);
+      // LLMs often expand clinical text significantly — allow up to 5× the fragment
+      // length, with a generous floor to handle even very short selections.
+      const maxOutputTokens = Math.max(1500, estimateTokens(fragment) * 5);
       return runEdit(userMessage, 'selection', maxOutputTokens);
     },
     [runEdit]
@@ -162,8 +174,8 @@ export function useEditStreaming() {
   const editDocument = useCallback(
     (fullDocument: string, instruction: string) => {
       const userMessage = buildDocumentEditMessage(fullDocument, instruction);
-      // Output budget: 120% of the full document's estimated size, min 1000
-      const maxOutputTokens = Math.max(1000, Math.ceil(estimateTokens(fullDocument) * 1.2));
+      // Allow 50% expansion over the original document, with a high floor.
+      const maxOutputTokens = Math.max(3000, Math.ceil(estimateTokens(fullDocument) * 1.5));
       return runEdit(userMessage, 'document', maxOutputTokens);
     },
     [runEdit]
