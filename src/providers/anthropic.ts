@@ -1,4 +1,4 @@
-import type { ProviderAdapter } from './types';
+import type { ProviderAdapter, ConversationMessage } from './types';
 import { proxyFetch } from '../utils/proxyFetch';
 
 export const anthropicAdapter: ProviderAdapter = {
@@ -16,16 +16,14 @@ export const anthropicAdapter: ProviderAdapter = {
 
   formatRequest(
     systemPrompt: string,
-    userMessage: string,
+    messages: ConversationMessage[],
     model: string,
     maxOutputTokens: number
   ): object {
     return {
       model,
       system: systemPrompt,
-      messages: [
-        { role: 'user', content: userMessage },
-      ],
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
       max_tokens: maxOutputTokens,
       stream: true,
     };

@@ -9,9 +9,16 @@ interface InputPanelProps {
 
 const DOC_TYPE_KEYS: DocTypeKey[] = ['pervichniy', 'povtorniy', 'vk', 'msek'];
 
+function formatTurns(n: number): string {
+  if (n === 1) return '1 обмен';
+  if (n >= 2 && n <= 4) return `${n} обмена`;
+  return `${n} обменов`;
+}
+
 export default function InputPanel({ onGenerate, onStop }: InputPanelProps) {
   const [state, dispatch] = useAppState();
-  const { docType, inputText, isStreaming } = state;
+  const { docType, inputText, isStreaming, conversationHistory } = state;
+  const turnCount = conversationHistory.length / 2;
 
   return (
     <div className="flex flex-col gap-4 md:h-full">
@@ -47,6 +54,22 @@ export default function InputPanel({ onGenerate, onStop }: InputPanelProps) {
           className="min-h-[200px] w-full resize-none rounded-xl border border-white/[0.1] bg-white/[0.06] px-3.5 py-3 text-sm leading-relaxed text-white/90 placeholder:text-white/25 focus:border-indigo-400/60 focus:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150 md:flex-1"
         />
       </div>
+
+      {turnCount > 0 && (
+        <div className="flex items-center justify-between rounded-lg border border-indigo-500/20 bg-indigo-500/[0.08] px-3 py-1.5">
+          <span className="text-[11px] text-indigo-300/80">
+            В контексте: {formatTurns(turnCount)}
+          </span>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'CLEAR_CONVERSATION' })}
+            disabled={isStreaming}
+            className="text-[11px] text-white/30 transition-colors duration-150 hover:text-white disabled:opacity-30"
+          >
+            Очистить
+          </button>
+        </div>
+      )}
 
       {isStreaming ? (
         <button

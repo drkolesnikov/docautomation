@@ -47,9 +47,10 @@ export function useEditStreaming() {
 
       const requestUrl = adapter.buildRequestUrl(settings.baseUrl, settings.model, settings.apiKey);
       const headers = adapter.formatHeaders(settings.apiKey);
+      // Edit requests are standalone — no conversation history context
       const body = adapter.formatRequest(
         EDIT_SYSTEM_PROMPT,
-        userMessage,
+        [{ role: 'user', content: userMessage }],
         settings.model,
         maxOutputTokens
       );

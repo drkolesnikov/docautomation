@@ -1,4 +1,4 @@
-import type { ProviderAdapter } from './types';
+import type { ProviderAdapter, ConversationMessage } from './types';
 import { proxyFetch } from '../utils/proxyFetch';
 
 /**
@@ -28,7 +28,7 @@ export const yandexgptAdapter: ProviderAdapter = {
 
   formatRequest(
     systemPrompt: string,
-    userMessage: string,
+    messages: ConversationMessage[],
     model: string,
     maxOutputTokens: number
   ): object {
@@ -52,9 +52,10 @@ export const yandexgptAdapter: ProviderAdapter = {
         stream: true,
         maxTokens: maxOutputTokens,
       },
+      // YandexGPT uses 'text' instead of 'content', but supports 'user'/'assistant' roles
       messages: [
         { role: 'system', text: systemPrompt },
-        { role: 'user', text: userMessage },
+        ...messages.map((m) => ({ role: m.role, text: m.content })),
       ],
     };
   },

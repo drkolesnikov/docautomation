@@ -1,4 +1,4 @@
-import type { ProviderAdapter } from './types';
+import type { ProviderAdapter, ConversationMessage } from './types';
 import { proxyFetch } from '../utils/proxyFetch';
 
 export const openaiCompatAdapter: ProviderAdapter = {
@@ -15,7 +15,7 @@ export const openaiCompatAdapter: ProviderAdapter = {
 
   formatRequest(
     systemPrompt: string,
-    userMessage: string,
+    messages: ConversationMessage[],
     model: string,
     maxOutputTokens: number
   ): object {
@@ -23,7 +23,7 @@ export const openaiCompatAdapter: ProviderAdapter = {
       model,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
       ],
       max_tokens: maxOutputTokens,
       stream: true,

@@ -4,6 +4,7 @@ import { PROVIDER_REGISTRY } from '../providers/registry';
 import { proxyFetch } from '../utils/proxyFetch';
 import { buildPrompt, DOC_TYPE_CONFIG } from '../prompts/index';
 import type { Example } from '../examples/types';
+import type { ConversationMessage } from '../providers/types';
 
 export function useStreamingResponse() {
   const [state, dispatch] = useAppState();
@@ -31,7 +32,7 @@ export function useStreamingResponse() {
 
   const generate = useCallback(
     async (examples: Example[]) => {
-      const { settings, docType, inputText } = state;
+      const { settings, docType, inputText, conversationHistory } = state;
 
       // Validate settings
       if (!settings) {
@@ -71,9 +72,14 @@ export function useStreamingResponse() {
         settings.apiKey
       );
       const headers = adapter.formatHeaders(settings.apiKey);
+      // Build full messages array: previous turns + current user message
+      const messages: ConversationMessage[] = [
+        ...conversationHistory,
+        { role: 'user', content: inputText },
+      ];
       const body = adapter.formatRequest(
         systemPrompt,
-        inputText,
+        messages,
         settings.model,
         docConfig.maxOutputTokens
       );
@@ -226,6 +232,10 @@ export function useStreamingResponse() {
         }
       } finally {
         if (completedCleanly && accumulated.trim()) {
+          dispatch({
+            type: 'PUSH_CONVERSATION_TURN',
+            payload: { user: inputText, assistant: accumulated },
+          });
           dispatch({
             type: 'PUSH_SESSION_ENTRY',
             payload: { docType, inputText, outputText: accumulated },
