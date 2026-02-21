@@ -95,19 +95,33 @@ export default function SettingsModal() {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-        <h2 className="mb-4 text-lg font-semibold">Настройки</h2>
+  const inputCls = 'w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/10 transition-all duration-150';
+  const labelCls = 'text-[11px] font-semibold uppercase tracking-widest text-slate-400';
 
-        <div className="flex flex-col gap-4">
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl shadow-black/15 border border-slate-100 max-h-[90vh] overflow-y-auto">
+        {/* Modal header */}
+        <div className="px-6 py-5 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 shadow-sm text-[10px] font-bold text-white">
+              П
+            </div>
+            <div>
+              <h2 className="text-[15px] font-bold text-slate-900">Настройки</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">Параметры подключения к LLM</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-5 flex flex-col gap-5">
           {/* Provider */}
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-gray-700">Провайдер</span>
+          <div className="flex flex-col gap-1.5">
+            <span className={labelCls}>Провайдер</span>
             <select
               value={provider}
               onChange={(e) => handleProviderChange(e.target.value as ProviderKey)}
-              className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className={inputCls + ' cursor-pointer'}
             >
               {PROVIDER_KEYS.map((key) => (
                 <option key={key} value={key}>
@@ -115,48 +129,56 @@ export default function SettingsModal() {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
 
           {/* API Key */}
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-gray-700">API-ключ</span>
+          <div className="flex flex-col gap-1.5">
+            <span className={labelCls}>API-ключ</span>
             <div className="flex gap-2">
               <input
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => { setApiKey(e.target.value); setKeyValid(null); }}
                 placeholder="Введите API-ключ"
-                className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className={inputCls + ' flex-1'}
               />
               <button
                 type="button"
                 onClick={() => setShowKey(!showKey)}
-                className="rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50"
+                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all duration-150 whitespace-nowrap"
               >
                 {showKey ? 'Скрыть' : 'Показать'}
               </button>
             </div>
-          </label>
+          </div>
 
           {/* Validate Key */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={handleValidateKey}
               disabled={!apiKey || validating}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
             >
               {validating ? 'Проверка...' : 'Проверить ключ'}
             </button>
-            {keyValid === true && <span className="text-green-600 text-sm">&#10003; Ключ действителен</span>}
-            {keyValid === false && <span className="text-red-600 text-sm">&#10007; Ключ недействителен</span>}
+            {keyValid === true && (
+              <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+                <span className="text-base">✓</span> Ключ действителен
+              </span>
+            )}
+            {keyValid === false && (
+              <span className="flex items-center gap-1 text-sm font-medium text-rose-600">
+                <span className="text-base">✗</span> Ключ недействителен
+              </span>
+            )}
           </div>
 
           {/* Model */}
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-gray-700">Модель</span>
+          <div className="flex flex-col gap-1.5">
+            <span className={labelCls}>Модель</span>
             {registryEntry.models.length > 0 ? (
-              <>
+              <div className="flex flex-col gap-2">
                 <select
                   value={resolveSelectValue(model, registryEntry.models)}
                   onChange={(e) => {
@@ -168,7 +190,7 @@ export default function SettingsModal() {
                       setCustomModel('');
                     }
                   }}
-                  className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className={inputCls + ' cursor-pointer'}
                 >
                   {registryEntry.models.map((m) => (
                     <option key={m} value={m}>{m}</option>
@@ -182,86 +204,89 @@ export default function SettingsModal() {
                     onChange={(e) => setCustomModel(e.target.value)}
                     placeholder="Название модели"
                     autoFocus
-                    className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    className={inputCls}
                   />
                 )}
-              </>
+              </div>
             ) : (
               <input
                 type="text"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder="Название модели"
-                className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className={inputCls}
               />
             )}
           </div>
 
           {/* Base URL */}
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-gray-700">Base URL</span>
+          <div className="flex flex-col gap-1.5">
+            <span className={labelCls}>Base URL</span>
             <input
               type="text"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
               placeholder="https://..."
-              className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className={inputCls}
             />
-          </label>
+          </div>
 
           {/* Folder ID (YandexGPT only) */}
           {showFolderId && (
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-gray-700">Folder ID</span>
+            <div className="flex flex-col gap-1.5">
+              <span className={labelCls}>Folder ID</span>
               <input
                 type="text"
                 value={folderId}
                 onChange={(e) => setFolderId(e.target.value)}
                 placeholder="ID каталога Yandex Cloud"
-                className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className={inputCls}
               />
-            </label>
+            </div>
           )}
 
+          {/* Divider */}
+          <div className="border-t border-slate-100" />
+
           {/* Max Context Tokens */}
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-gray-700">Макс. контекст (токены)</span>
+          <div className="flex flex-col gap-1.5">
+            <span className={labelCls}>Макс. контекст (токены)</span>
             <input
               type="number"
               value={maxContextTokens}
               onChange={(e) => setMaxContextTokens(Number(e.target.value) || 128000)}
               min={1000}
-              className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className={inputCls}
             />
-          </label>
+          </div>
 
           {/* Example Count */}
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-gray-700">Количество примеров</span>
+          <div className="flex flex-col gap-1.5">
+            <span className={labelCls}>Количество примеров</span>
             <input
               type="number"
               value={localExampleCount}
               onChange={(e) => setLocalExampleCount(Math.max(0, Number(e.target.value) || 0))}
               min={0}
               max={10}
-              className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className={inputCls}
             />
-          </label>
+          </div>
         </div>
 
         {/* Actions */}
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
           <button
             type="button"
             onClick={handleCancel}
-            className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+            className="rounded-xl border border-slate-200 bg-white px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all duration-150"
           >
             Отмена
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-200/60 hover:from-indigo-600 hover:to-violet-600 transition-all duration-200"
           >
             Сохранить
           </button>

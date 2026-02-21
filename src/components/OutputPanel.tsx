@@ -109,7 +109,7 @@ export default function OutputPanel({
   );
 
   return (
-    <div className="flex flex-col gap-3 h-full">
+    <div className="flex flex-col gap-4 h-full">
       {/* ── Output area — hidden when canvas takes over ────────────────── */}
       {!isCanvasActive && (
         <div className="relative flex-1 min-h-[200px]">
@@ -122,15 +122,15 @@ export default function OutputPanel({
             onKeyUp={handleSelectionChange}
             onKeyDown={handleKeyDown}
             className={[
-              'h-full min-h-[200px] w-full rounded border p-3 text-sm leading-relaxed',
-              'focus:outline-none whitespace-pre-wrap break-words overflow-y-auto',
+              'h-full min-h-[200px] w-full rounded-xl border px-3.5 py-3 text-sm leading-relaxed',
+              'focus:outline-none focus:ring-2 whitespace-pre-wrap break-words overflow-y-auto transition-all duration-150',
               isAnyStreaming
-                ? 'border-gray-200 bg-gray-50 cursor-default select-none'
-                : 'border-gray-300 bg-white focus:border-blue-500',
+                ? 'border-slate-100 bg-slate-50/70 cursor-default select-none'
+                : 'border-slate-200 bg-slate-50/60 focus:border-indigo-300 focus:bg-white focus:ring-indigo-500/10',
             ].join(' ')}
           />
           {!hasOutput && (
-            <span className="pointer-events-none absolute left-0 top-0 select-none p-3 text-sm text-gray-400">
+            <span className="pointer-events-none absolute left-0 top-0 select-none px-3.5 py-3 text-sm text-slate-400">
               Здесь появится готовый документ.
             </span>
           )}
@@ -146,20 +146,26 @@ export default function OutputPanel({
 
       {/* ── Controls ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           <button
             type="button"
             onClick={handleCopy}
             disabled={!hasOutput || isAnyStreaming}
-            className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className={[
+              'rounded-lg border px-3 py-1.5 text-sm font-medium shadow-sm transition-all duration-150',
+              'disabled:opacity-40 disabled:cursor-not-allowed',
+              copyFlash
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300',
+            ].join(' ')}
           >
-            {copyFlash ? 'Скопировано!' : 'Копировать'}
+            {copyFlash ? '✓ Скопировано' : 'Копировать'}
           </button>
           <button
             type="button"
             onClick={onRegenerate}
             disabled={isAnyStreaming}
-            className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
           >
             Заново
           </button>
@@ -169,7 +175,7 @@ export default function OutputPanel({
             onClick={handleUndo}
             disabled={!canUndo || isAnyStreaming}
             title="Отменить правку (Ctrl+Z)"
-            className="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
           >
             ↩
           </button>
@@ -179,7 +185,7 @@ export default function OutputPanel({
             onClick={handleRedo}
             disabled={!canRedo || isAnyStreaming}
             title="Повторить правку (Ctrl+Y)"
-            className="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
           >
             ↪
           </button>
