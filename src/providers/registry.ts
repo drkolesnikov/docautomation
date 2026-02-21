@@ -71,9 +71,8 @@ export const PROVIDER_REGISTRY: Record<ProviderKey, ProviderRegistryEntry> = {
     label: 'YandexGPT',
     defaultModel: 'yandexgpt-lite',
     models: [
-      'yandexgpt-lite',
       'yandexgpt',
-      'yandexgpt-32k',
+      'yandexgpt-lite',
     ],
     needsFolderId: true,
   },
