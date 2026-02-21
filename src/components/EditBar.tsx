@@ -116,9 +116,9 @@ export default function EditBar({ outputText }: EditBarProps) {
             </span>
           </p>
 
-          <div className="grid flex-1 min-h-0 grid-cols-2 gap-3 mb-3">
+          <div className="grid flex-1 min-h-0 grid-cols-1 gap-3 mb-3 sm:grid-cols-2">
             {/* Before */}
-            <div className="flex min-h-0 flex-col">
+            <div className="flex flex-col min-h-[120px] sm:min-h-0">
               <p className="mb-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-widest text-rose-400/80">Было</p>
               <div className="flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl border border-rose-400/15 border-l-[3px] border-l-rose-400/40 bg-rose-400/[0.06] px-3.5 py-3 text-sm leading-relaxed text-white/60">
                 {selection.text}
@@ -126,7 +126,7 @@ export default function EditBar({ outputText }: EditBarProps) {
             </div>
 
             {/* After — editable */}
-            <div className="flex min-h-0 flex-col">
+            <div className="flex flex-col min-h-[120px] sm:min-h-0">
               <p className="mb-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-widest text-emerald-400/80">
                 Стало{' '}
                 <span className="normal-case font-normal text-white/30 tracking-normal">(редактируемо)</span>
@@ -236,10 +236,10 @@ export default function EditBar({ outputText }: EditBarProps) {
 
     return (
       <div className="rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.07] p-4">
-        <div className="mb-2.5 flex items-center justify-between">
-          <p className="text-xs text-indigo-300/80">
+        <div className="mb-2.5 flex items-start justify-between gap-2">
+          <p className="min-w-0 text-xs text-indigo-300/80">
             <span className="font-semibold">Выделено ({selection.text.length} симв.):</span>{' '}
-            <span className="italic opacity-70">«{preview}»</span>
+            <span className="italic opacity-70 break-all">«{preview}»</span>
           </p>
           <button
             type="button"

@@ -14,7 +14,7 @@ export default function InputPanel({ onGenerate, onStop }: InputPanelProps) {
   const { docType, inputText, isStreaming } = state;
 
   return (
-    <div className="flex flex-col gap-5 h-full">
+    <div className="flex flex-col gap-4 md:h-full">
       <div className="flex flex-col gap-2">
         <label className="text-[11px] font-semibold uppercase tracking-widest text-white/35">
           Тип документа
@@ -44,7 +44,7 @@ export default function InputPanel({ onGenerate, onStop }: InputPanelProps) {
           onChange={(e) => dispatch({ type: 'SET_INPUT_TEXT', payload: e.target.value })}
           placeholder="Введите заметки врача..."
           autoFocus
-          className="flex-1 min-h-[200px] w-full resize-none rounded-xl border border-white/[0.1] bg-white/[0.06] px-3.5 py-3 text-sm leading-relaxed text-white/90 placeholder:text-white/25 focus:border-indigo-400/60 focus:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150"
+          className="min-h-[200px] w-full resize-none rounded-xl border border-white/[0.1] bg-white/[0.06] px-3.5 py-3 text-sm leading-relaxed text-white/90 placeholder:text-white/25 focus:border-indigo-400/60 focus:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150 md:flex-1"
         />
       </div>
 

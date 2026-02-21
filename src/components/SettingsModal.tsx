@@ -101,8 +101,8 @@ export default function SettingsModal() {
   const ghostBtnCls = 'rounded-xl border border-white/10 bg-white/[0.07] px-3.5 py-2.5 text-sm font-medium text-white/70 hover:bg-white/[0.12] hover:text-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150 whitespace-nowrap';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-      <div className="w-full max-w-md rounded-3xl border border-white/[0.1] bg-[#0b0c1a] shadow-2xl shadow-black/60 max-h-[90vh] overflow-y-auto ring-1 ring-inset ring-white/[0.04]">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-md sm:items-center sm:p-4">
+      <div className="w-full max-w-md rounded-t-3xl border border-white/[0.1] bg-[#0b0c1a] shadow-2xl shadow-black/60 max-h-[92vh] overflow-y-auto ring-1 ring-inset ring-white/[0.04] sm:rounded-3xl">
         {/* Modal header */}
         <div className="px-6 py-5 border-b border-white/[0.07]">
           <div className="flex items-center gap-3">
@@ -155,7 +155,7 @@ export default function SettingsModal() {
           </div>
 
           {/* Validate Key */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={handleValidateKey}
@@ -277,7 +277,7 @@ export default function SettingsModal() {
         </div>
 
         {/* Actions */}
-        <div className="px-6 py-4 border-t border-white/[0.07] flex justify-end gap-2">
+        <div className="px-6 py-4 border-t border-white/[0.07] flex flex-row-reverse flex-wrap gap-2">
           <button
             type="button"
             onClick={handleCancel}

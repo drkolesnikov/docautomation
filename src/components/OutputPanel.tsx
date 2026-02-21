@@ -108,13 +108,13 @@ export default function OutputPanel({
     [canUndo, canRedo, handleUndo, handleRedo]
   );
 
-  const btnCls = 'rounded-lg border border-white/10 bg-white/[0.07] px-3 py-1.5 text-sm font-medium text-white/60 hover:bg-white/[0.12] hover:text-white/90 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150';
+  const btnCls = 'rounded-lg border border-white/10 bg-white/[0.07] px-3 py-2 text-sm font-medium text-white/60 hover:bg-white/[0.12] hover:text-white/90 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150';
 
   return (
-    <div className="flex flex-col gap-4 h-full">
+    <div className="flex flex-col gap-4 md:h-full">
       {/* ── Output area — hidden when canvas takes over ────────────────── */}
       {!isCanvasActive && (
-        <div className="relative flex-1 min-h-[200px]">
+        <div className="relative min-h-[260px] md:flex-1">
           <div
             ref={contentRef}
             contentEditable={!isAnyStreaming}
@@ -124,7 +124,7 @@ export default function OutputPanel({
             onKeyUp={handleSelectionChange}
             onKeyDown={handleKeyDown}
             className={[
-              'h-full min-h-[200px] w-full rounded-xl border px-3.5 py-3 text-sm leading-relaxed',
+              'h-full min-h-[260px] w-full rounded-xl border px-3.5 py-3 text-sm leading-relaxed',
               'focus:outline-none focus:ring-2 whitespace-pre-wrap break-words overflow-y-auto transition-all duration-150',
               isAnyStreaming
                 ? 'border-white/[0.06] bg-white/[0.03] cursor-default select-none text-white/70'
@@ -147,14 +147,14 @@ export default function OutputPanel({
       )}
 
       {/* ── Controls ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex gap-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
+        <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={handleCopy}
             disabled={!hasOutput || isAnyStreaming}
             className={[
-              'rounded-lg border px-3 py-1.5 text-sm font-medium transition-all duration-150 disabled:opacity-25 disabled:cursor-not-allowed',
+              'rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-150 disabled:opacity-25 disabled:cursor-not-allowed',
               copyFlash
                 ? 'border-emerald-400/30 bg-emerald-400/[0.15] text-emerald-300'
                 : 'border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/[0.12] hover:text-white/90',
