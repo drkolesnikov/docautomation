@@ -41,6 +41,7 @@ export type AppState = {
   editMode: EditMode;              // 'selection' | 'document' — active when streaming/staged
   editHistory: EditDelta[];        // undo stack (max 20)
   editFuture: EditDelta[];         // redo stack
+  editTruncated: boolean;          // true when last streamed edit hit max_tokens
 };
 
 // ---------------------------------------------------------------------------
@@ -66,6 +67,7 @@ export type AppAction =
   | { type: 'APPLY_EDIT'; payload: EditDelta }
   | { type: 'UNDO_EDIT' }
   | { type: 'REDO_EDIT' }
+  | { type: 'SET_EDIT_TRUNCATED'; payload: boolean }
   | { type: 'CLEAR_CANVAS_STATE' };
 
 // ---------------------------------------------------------------------------
@@ -134,6 +136,7 @@ function createInitialState(): AppState {
     editMode: null,
     editHistory: [],
     editFuture: [],
+    editTruncated: false,
   };
 }
 
@@ -202,6 +205,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_EDIT_MODE':
       return { ...state, editMode: action.payload };
 
+    case 'SET_EDIT_TRUNCATED':
+      return { ...state, editTruncated: action.payload };
+
     case 'APPLY_EDIT': {
       const { start, end, removed, inserted } = action.payload;
       const before = state.outputText.slice(0, start);
@@ -219,6 +225,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         pendingEditText: null,
         editMode: null,
         isEditStreaming: false,
+        editTruncated: false,
       };
     }
 
@@ -262,6 +269,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         editMode: null,
         editHistory: [],
         editFuture: [],
+        editTruncated: false,
       };
 
     default:

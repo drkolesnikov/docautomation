@@ -9,7 +9,7 @@ interface EditBarProps {
 
 export default function EditBar({ outputText }: EditBarProps) {
   const [state, dispatch] = useAppState();
-  const { selection, editInstruction, isEditStreaming, pendingEditText, editMode } = state;
+  const { selection, editInstruction, isEditStreaming, pendingEditText, editMode, editTruncated } = state;
   const { editFragment, editDocument, stopEdit } = useEditStreaming();
   const instructionRef = useRef<HTMLInputElement>(null);
   const streamPreviewRef = useRef<HTMLDivElement>(null);
@@ -140,6 +140,11 @@ export default function EditBar({ outputText }: EditBarProps) {
             </div>
           </div>
 
+          {editTruncated && (
+            <p className="mb-2 shrink-0 rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+              ⚠ Правка может быть неполной — модель достигла лимита токенов. Отредактируйте «Стало» вручную перед применением.
+            </p>
+          )}
           <div className="flex shrink-0 gap-2">
             <button
               type="button"
@@ -178,6 +183,11 @@ export default function EditBar({ outputText }: EditBarProps) {
           spellCheck={false}
         />
 
+        {editTruncated && (
+          <p className="mb-2 shrink-0 rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+            ⚠ Документ может быть неполным — модель достигла лимита токенов. Проверьте и дополните текст перед применением.
+          </p>
+        )}
         <div className="flex shrink-0 gap-2">
           <button
             type="button"
