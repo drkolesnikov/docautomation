@@ -63,14 +63,14 @@ export default function EditBar({ outputText }: EditBarProps) {
           <button
             type="button"
             onClick={stopEdit}
-            className="rounded-lg border border-indigo-400/25 bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-indigo-300 hover:bg-white/[0.1] transition-all duration-150"
+            className="rounded-lg border border-indigo-400/25 bg-white/[0.06] px-3.5 py-2 text-xs font-medium text-indigo-300 hover:bg-white/[0.1] transition-all duration-150"
           >
             ■ Стоп
           </button>
         </div>
         <div
           ref={streamPreviewRef}
-          className="flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl border border-white/[0.08] bg-white/[0.04] p-3.5 text-sm leading-relaxed text-white/80"
+          className="min-h-[160px] flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl border border-white/[0.08] bg-white/[0.04] p-3.5 text-sm leading-relaxed text-white/80"
         >
           {pendingEditText ?? ''}
         </div>
@@ -145,19 +145,19 @@ export default function EditBar({ outputText }: EditBarProps) {
               ⚠ Правка может быть неполной — модель достигла лимита токенов. Отредактируйте «Стало» вручную перед применением.
             </p>
           )}
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
             <button
               type="button"
               onClick={handleAccept}
               disabled={!editedText.trim()}
-              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-1.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-200"
+              className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-200 sm:w-auto"
             >
               ✓ Принять
             </button>
             <button
               type="button"
               onClick={handleReject}
-              className="rounded-xl border border-white/10 bg-white/[0.07] px-4 py-1.5 text-sm font-medium text-white/60 hover:bg-white/[0.12] hover:text-white/90 transition-all duration-150"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.07] px-4 py-2.5 text-sm font-medium text-white/60 hover:bg-white/[0.12] hover:text-white/90 transition-all duration-150 sm:w-auto"
             >
               ✕ Отклонить
             </button>
@@ -188,19 +188,19 @@ export default function EditBar({ outputText }: EditBarProps) {
             ⚠ Документ может быть неполным — модель достигла лимита токенов. Проверьте и дополните текст перед применением.
           </p>
         )}
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
           <button
             type="button"
             onClick={handleAccept}
             disabled={!editedText.trim()}
-            className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-1.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-200"
+            className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-200 sm:w-auto"
           >
             ✓ Принять и заменить документ
           </button>
           <button
             type="button"
             onClick={handleReject}
-            className="rounded-xl border border-white/10 bg-white/[0.07] px-4 py-1.5 text-sm font-medium text-white/60 hover:bg-white/[0.12] hover:text-white/90 transition-all duration-150"
+            className="w-full rounded-xl border border-white/10 bg-white/[0.07] px-4 py-2.5 text-sm font-medium text-white/60 hover:bg-white/[0.12] hover:text-white/90 transition-all duration-150 sm:w-auto"
           >
             ✕ Отклонить
           </button>
@@ -244,13 +244,13 @@ export default function EditBar({ outputText }: EditBarProps) {
           <button
             type="button"
             onClick={() => dispatch({ type: 'SET_SELECTION', payload: null })}
-            className="rounded-md px-1.5 py-0.5 text-xs text-indigo-400/60 hover:text-indigo-300 hover:bg-indigo-400/10 transition-all duration-150"
+            className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs text-indigo-400/60 hover:text-indigo-300 hover:bg-indigo-400/10 transition-all duration-150"
             title="Снять выделение"
           >
             ✕
           </button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             ref={instructionRef}
             type="text"
@@ -258,13 +258,13 @@ export default function EditBar({ outputText }: EditBarProps) {
             onChange={(e) => dispatch({ type: 'SET_EDIT_INSTRUCTION', payload: e.target.value })}
             onKeyDown={handleKeyDown}
             placeholder="Инструкция для выделенного фрагмента…"
-            className="flex-1 rounded-xl border border-indigo-400/20 bg-white/[0.06] px-3.5 py-2 text-sm text-white/90 placeholder:text-indigo-300/30 focus:border-indigo-400/60 focus:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150"
+            className="flex-1 rounded-xl border border-indigo-400/20 bg-white/[0.06] px-3.5 py-2.5 text-sm text-white/90 placeholder:text-indigo-300/30 focus:border-indigo-400/60 focus:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150"
           />
           <button
             type="button"
             onClick={handleSubmit}
             disabled={!editInstruction.trim()}
-            className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-3.5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-400 hover:to-violet-400 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-200"
+            className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-400 hover:to-violet-400 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-200 sm:w-auto"
           >
             Применить →
           </button>
@@ -276,20 +276,20 @@ export default function EditBar({ outputText }: EditBarProps) {
   // Doc mode (no selection)
   return (
     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4">
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
           value={editInstruction}
           onChange={(e) => dispatch({ type: 'SET_EDIT_INSTRUCTION', payload: e.target.value })}
           onKeyDown={handleKeyDown}
           placeholder="Инструкция для всего документа…"
-          className="flex-1 rounded-xl border border-white/[0.1] bg-white/[0.06] px-3.5 py-2 text-sm text-white/90 placeholder:text-white/25 focus:border-indigo-400/60 focus:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150"
+          className="flex-1 rounded-xl border border-white/[0.1] bg-white/[0.06] px-3.5 py-2.5 text-sm text-white/90 placeholder:text-white/25 focus:border-indigo-400/60 focus:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150"
         />
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!editInstruction.trim()}
-          className="rounded-xl border border-white/10 bg-white/[0.07] px-3.5 py-2 text-sm font-medium text-white/60 hover:bg-white/[0.12] hover:text-white/90 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150"
+          className="w-full rounded-xl border border-white/10 bg-white/[0.07] px-3.5 py-2.5 text-sm font-medium text-white/60 hover:bg-white/[0.12] hover:text-white/90 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150 sm:w-auto"
         >
           Улучшить →
         </button>
