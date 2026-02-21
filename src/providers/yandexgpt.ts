@@ -60,70 +60,38 @@ export const yandexgptAdapter: ProviderAdapter = {
   },
 
   parseStreamChunk(chunk: string): string | null {
-    const lines = chunk.split('\n');
-    let lastText: string | null = null;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (!trimmed.startsWith('data: ')) {
-        continue;
-      }
-
-      const data = trimmed.slice(6);
-
-      try {
-        const parsed = JSON.parse(data) as {
-          result?: {
-            alternatives?: Array<{
-              message?: { text?: string };
-            }>;
-          };
+    // The streaming hook already strips the "data: " prefix; chunk is raw JSON.
+    // YandexGPT returns the full accumulated text in each chunk, not deltas.
+    // The streaming hook replaces (not appends) output when using this adapter.
+    try {
+      const parsed = JSON.parse(chunk) as {
+        result?: {
+          alternatives?: Array<{
+            message?: { text?: string };
+          }>;
         };
-        const text = parsed.result?.alternatives?.[0]?.message?.text;
-        if (text !== undefined) {
-          // YandexGPT returns full accumulated text, not deltas.
-          // We return the latest full text; the streaming hook should
-          // replace (not append) when using this adapter.
-          lastText = text;
-        }
-      } catch {
-        // Skip malformed JSON chunks
-      }
+      };
+      return parsed.result?.alternatives?.[0]?.message?.text ?? null;
+    } catch {
+      return null;
     }
-
-    return lastText;
   },
 
   isMaxTokensTruncation(chunk: string): boolean {
-    const lines = chunk.split('\n');
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (!trimmed.startsWith('data: ')) {
-        continue;
-      }
-
-      const data = trimmed.slice(6);
-
-      try {
-        const parsed = JSON.parse(data) as {
-          result?: {
-            alternatives?: Array<{
-              status?: string;
-            }>;
-          };
+    // The streaming hook already strips the "data: " prefix; chunk is raw JSON.
+    try {
+      const parsed = JSON.parse(chunk) as {
+        result?: {
+          alternatives?: Array<{ status?: string }>;
         };
-        if (parsed.result?.alternatives?.[0]?.status === 'ALTERNATIVE_STATUS_TRUNCATED_FINAL') {
-          return true;
-        }
-      } catch {
-        // Skip malformed JSON
-      }
+      };
+      return (
+        parsed.result?.alternatives?.[0]?.status ===
+        'ALTERNATIVE_STATUS_TRUNCATED_FINAL'
+      );
+    } catch {
+      return false;
     }
-
-    return false;
   },
 
   async validateKey(apiKey: string, baseUrl: string): Promise<boolean> {

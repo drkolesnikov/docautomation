@@ -31,71 +31,30 @@ export const openaiCompatAdapter: ProviderAdapter = {
   },
 
   parseStreamChunk(chunk: string): string | null {
-    const lines = chunk.split('\n');
-    let result = '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (!trimmed || !trimmed.startsWith('data: ')) {
-        continue;
-      }
-
-      const data = trimmed.slice(6);
-
-      if (data === '[DONE]') {
-        return result.length > 0 ? result : null;
-      }
-
-      try {
-        const parsed = JSON.parse(data) as {
-          choices?: Array<{
-            delta?: { content?: string };
-          }>;
-        };
-        const content = parsed.choices?.[0]?.delta?.content;
-        if (content) {
-          result += content;
-        }
-      } catch {
-        // Skip malformed JSON chunks
-      }
+    // The streaming hook already strips the "data: " prefix; chunk is raw JSON.
+    try {
+      const parsed = JSON.parse(chunk) as {
+        choices?: Array<{
+          delta?: { content?: string };
+          finish_reason?: string;
+        }>;
+      };
+      return parsed.choices?.[0]?.delta?.content ?? null;
+    } catch {
+      return null;
     }
-
-    return result.length > 0 ? result : null;
   },
 
   isMaxTokensTruncation(chunk: string): boolean {
-    const lines = chunk.split('\n');
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (!trimmed.startsWith('data: ')) {
-        continue;
-      }
-
-      const data = trimmed.slice(6);
-
-      if (data === '[DONE]') {
-        continue;
-      }
-
-      try {
-        const parsed = JSON.parse(data) as {
-          choices?: Array<{
-            finish_reason?: string;
-          }>;
-        };
-        if (parsed.choices?.[0]?.finish_reason === 'length') {
-          return true;
-        }
-      } catch {
-        // Skip malformed JSON
-      }
+    // The streaming hook already strips the "data: " prefix; chunk is raw JSON.
+    try {
+      const parsed = JSON.parse(chunk) as {
+        choices?: Array<{ finish_reason?: string }>;
+      };
+      return parsed.choices?.[0]?.finish_reason === 'length';
+    } catch {
+      return false;
     }
-
-    return false;
   },
 
   async validateKey(apiKey: string, baseUrl: string): Promise<boolean> {

@@ -32,80 +32,38 @@ export const anthropicAdapter: ProviderAdapter = {
   },
 
   parseStreamChunk(chunk: string): string | null {
-    const lines = chunk.split('\n');
-    let result = '';
-    let currentEvent = '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (trimmed.startsWith('event: ')) {
-        currentEvent = trimmed.slice(7);
-        continue;
+    // The streaming hook already strips the "data: " prefix; chunk is raw JSON.
+    try {
+      const parsed = JSON.parse(chunk) as {
+        type?: string;
+        delta?: { type?: string; text?: string };
+      };
+      if (
+        parsed.type === 'content_block_delta' &&
+        parsed.delta?.type === 'text_delta'
+      ) {
+        return parsed.delta.text ?? null;
       }
-
-      if (!trimmed.startsWith('data: ')) {
-        continue;
-      }
-
-      const data = trimmed.slice(6);
-
-      if (currentEvent === 'content_block_delta') {
-        try {
-          const parsed = JSON.parse(data) as {
-            delta?: { text?: string };
-          };
-          const text = parsed.delta?.text;
-          if (text) {
-            result += text;
-          }
-        } catch {
-          // Skip malformed JSON
-        }
-      }
-
-      // Reset event after processing its data
-      currentEvent = '';
+    } catch {
+      // Skip malformed JSON
     }
-
-    return result.length > 0 ? result : null;
+    return null;
   },
 
   isMaxTokensTruncation(chunk: string): boolean {
-    const lines = chunk.split('\n');
-    let currentEvent = '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (trimmed.startsWith('event: ')) {
-        currentEvent = trimmed.slice(7);
-        continue;
-      }
-
-      if (!trimmed.startsWith('data: ')) {
-        continue;
-      }
-
-      const data = trimmed.slice(6);
-
-      if (currentEvent === 'message_delta') {
-        try {
-          const parsed = JSON.parse(data) as {
-            delta?: { stop_reason?: string };
-          };
-          if (parsed.delta?.stop_reason === 'max_tokens') {
-            return true;
-          }
-        } catch {
-          // Skip malformed JSON
-        }
-      }
-
-      currentEvent = '';
+    // The streaming hook already strips the "data: " prefix; chunk is raw JSON.
+    try {
+      const parsed = JSON.parse(chunk) as {
+        type?: string;
+        delta?: { stop_reason?: string };
+      };
+      return (
+        parsed.type === 'message_delta' &&
+        parsed.delta?.stop_reason === 'max_tokens'
+      );
+    } catch {
+      return false;
     }
-
-    return false;
   },
 
   async validateKey(apiKey: string, baseUrl: string): Promise<boolean> {
