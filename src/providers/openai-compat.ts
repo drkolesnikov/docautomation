@@ -101,13 +101,19 @@ export const openaiCompatAdapter: ProviderAdapter = {
   async validateKey(apiKey: string, baseUrl: string): Promise<boolean> {
     try {
       const response = await proxyFetch(
-        `${baseUrl}/v1/models`,
+        `${baseUrl}/v1/chat/completions`,
         {
           'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
         },
-        {},
+        {
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 1,
+        },
       );
-      return response.ok;
+      // 401/403 = bad key; anything else (200, 400, 429…) = key was accepted
+      return response.status !== 401 && response.status !== 403;
     } catch {
       return false;
     }
