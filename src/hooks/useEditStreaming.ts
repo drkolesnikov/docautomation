@@ -4,6 +4,7 @@ import type { EditMode } from '../context/AppContext';
 import { PROVIDER_REGISTRY } from '../providers/registry';
 import { proxyFetch } from '../utils/proxyFetch';
 import { estimateTokens } from '../utils/tokenEstimator';
+import { DOC_TYPE_CONFIG } from '../prompts/index';
 import { EDIT_SYSTEM_PROMPT, buildFragmentEditMessage, buildDocumentEditMessage } from '../utils/editPrompt';
 
 export function useEditStreaming() {
@@ -163,22 +164,28 @@ export function useEditStreaming() {
   const editFragment = useCallback(
     (fullDocument: string, fragment: string, instruction: string) => {
       const userMessage = buildFragmentEditMessage(fullDocument, fragment, instruction);
-      // LLMs often expand clinical text significantly — allow up to 5× the fragment
-      // length, with a generous floor to handle even very short selections.
-      const maxOutputTokens = Math.max(1500, estimateTokens(fragment) * 5);
+      // Use the current doc type's full output budget as the floor — a fragment
+      // rewrite should never need more than a fresh generation of the same doc type.
+      // On top of that, allow 6× the fragment length to handle significant expansion.
+      const { docType } = state;
+      const docFloor = DOC_TYPE_CONFIG[docType].maxOutputTokens;
+      const maxOutputTokens = Math.max(docFloor, estimateTokens(fragment) * 6);
       return runEdit(userMessage, 'selection', maxOutputTokens);
     },
-    [runEdit]
+    [runEdit, state]
   );
 
   const editDocument = useCallback(
     (fullDocument: string, instruction: string) => {
       const userMessage = buildDocumentEditMessage(fullDocument, instruction);
-      // Allow 50% expansion over the original document, with a high floor.
-      const maxOutputTokens = Math.max(3000, Math.ceil(estimateTokens(fullDocument) * 1.5));
+      // Allow 2× the doc type's generation budget — a full rewrite with an
+      // instruction to expand could legitimately produce double the original.
+      const { docType } = state;
+      const docFloor = DOC_TYPE_CONFIG[docType].maxOutputTokens;
+      const maxOutputTokens = Math.max(docFloor * 2, Math.ceil(estimateTokens(fullDocument) * 2));
       return runEdit(userMessage, 'document', maxOutputTokens);
     },
-    [runEdit]
+    [runEdit, state]
   );
 
   return { editFragment, editDocument, stopEdit };
