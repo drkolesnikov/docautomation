@@ -34,65 +34,31 @@ export const geminiAdapter: ProviderAdapter = {
   },
 
   parseStreamChunk(chunk: string): string | null {
-    const lines = chunk.split('\n');
-    let result = '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (!trimmed.startsWith('data: ')) {
-        continue;
-      }
-
-      const data = trimmed.slice(6);
-
-      try {
-        const parsed = JSON.parse(data) as {
-          candidates?: Array<{
-            content?: {
-              parts?: Array<{ text?: string }>;
-            };
-          }>;
-        };
-        const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          result += text;
-        }
-      } catch {
-        // Skip malformed JSON chunks
-      }
+    // The streaming hook already strips the "data: " prefix; chunk is raw JSON.
+    try {
+      const parsed = JSON.parse(chunk) as {
+        candidates?: Array<{
+          content?: {
+            parts?: Array<{ text?: string }>;
+          };
+        }>;
+      };
+      return parsed.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
+    } catch {
+      return null;
     }
-
-    return result.length > 0 ? result : null;
   },
 
   isMaxTokensTruncation(chunk: string): boolean {
-    const lines = chunk.split('\n');
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (!trimmed.startsWith('data: ')) {
-        continue;
-      }
-
-      const data = trimmed.slice(6);
-
-      try {
-        const parsed = JSON.parse(data) as {
-          candidates?: Array<{
-            finishReason?: string;
-          }>;
-        };
-        if (parsed.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
-          return true;
-        }
-      } catch {
-        // Skip malformed JSON
-      }
+    // The streaming hook already strips the "data: " prefix; chunk is raw JSON.
+    try {
+      const parsed = JSON.parse(chunk) as {
+        candidates?: Array<{ finishReason?: string }>;
+      };
+      return parsed.candidates?.[0]?.finishReason === 'MAX_TOKENS';
+    } catch {
+      return false;
     }
-
-    return false;
   },
 
   async validateKey(apiKey: string, baseUrl: string): Promise<boolean> {
