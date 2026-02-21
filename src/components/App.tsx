@@ -8,10 +8,11 @@ import InputPanel from './InputPanel';
 import OutputPanel from './OutputPanel';
 import SettingsModal from './SettingsModal';
 import StatusBar from './StatusBar';
+import HistoryPanel from './HistoryPanel';
 
 export default function App() {
   const [state, dispatch] = useAppState();
-  const { docType, isStreaming, settings } = state;
+  const { docType, isStreaming, settings, sessionHistory } = state;
 
   const [examples, setExamples] = useState<Example[]>([]);
 
@@ -70,6 +71,23 @@ export default function App() {
               ПНД<span className="text-indigo-400">.doc</span>
             </h1>
           </div>
+          <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'TOGGLE_HISTORY' })}
+            disabled={isStreaming}
+            className="relative flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-medium text-white/70 hover:bg-white/[0.1] hover:border-white/20 hover:text-white disabled:opacity-30 transition-all duration-150 md:px-4"
+          >
+            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="hidden sm:inline">История</span>
+            {sessionHistory.length > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-500 px-0.5 text-[9px] font-bold leading-none text-white">
+                {sessionHistory.length}
+              </span>
+            )}
+          </button>
           <button
             type="button"
             onClick={() => dispatch({ type: 'OPEN_SETTINGS' })}
@@ -82,6 +100,7 @@ export default function App() {
             </svg>
             <span className="hidden sm:inline">Настройки</span>
           </button>
+          </div>
         </header>
 
         {/* Main content */}
@@ -104,6 +123,9 @@ export default function App() {
 
         {/* Settings modal */}
         <SettingsModal />
+
+        {/* Session history drawer */}
+        <HistoryPanel />
       </div>
     </div>
   );

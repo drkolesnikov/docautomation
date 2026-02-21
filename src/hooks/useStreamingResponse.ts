@@ -78,6 +78,8 @@ export function useStreamingResponse() {
         docConfig.maxOutputTokens
       );
 
+      let accumulated = '';
+      let completedCleanly = false;
       let lastChunk = '';
 
       try {
@@ -119,7 +121,6 @@ export function useStreamingResponse() {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let accumulated = '';
         let buffer = '';
         const isYandex = settings.provider === 'yandexgpt';
 
@@ -200,6 +201,8 @@ export function useStreamingResponse() {
             payload: 'Документ может быть неполным. Попробуйте уменьшить ввод.',
           });
         }
+
+        completedCleanly = true;
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError') {
           // Only show "interrupted" message if not user-initiated
@@ -222,6 +225,12 @@ export function useStreamingResponse() {
           });
         }
       } finally {
+        if (completedCleanly && accumulated.trim()) {
+          dispatch({
+            type: 'PUSH_SESSION_ENTRY',
+            payload: { docType, inputText, outputText: accumulated },
+          });
+        }
         dispatch({ type: 'SET_STREAMING', payload: false });
         if (abortControllerRef.current === abortController) {
           abortControllerRef.current = null;
