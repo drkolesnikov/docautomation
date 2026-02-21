@@ -12,6 +12,7 @@ export default function SettingsModal() {
   const [provider, setProvider] = useState<ProviderKey>(settings?.provider ?? 'openai');
   const [apiKey, setApiKey] = useState(settings?.apiKey ?? '');
   const [model, setModel] = useState(settings?.model ?? PROVIDER_REGISTRY.openai.defaultModel);
+  const [customModel, setCustomModel] = useState('');
   const [baseUrl, setBaseUrl] = useState(settings?.baseUrl ?? PROVIDER_REGISTRY.openai.defaultBaseUrl);
   const [folderId, setFolderId] = useState(settings?.folderId ?? '');
   const [maxContextTokens, setMaxContextTokens] = useState(settings?.maxContextTokens ?? 128000);
@@ -20,12 +21,21 @@ export default function SettingsModal() {
   const [validating, setValidating] = useState(false);
   const [keyValid, setKeyValid] = useState<boolean | null>(null);
 
+  const CUSTOM_SENTINEL = '__custom__';
+
+  const resolveSelectValue = (m: string, knownModels: readonly string[]): string =>
+    knownModels.includes(m) ? m : CUSTOM_SENTINEL;
+
   // Reset form when modal opens
   useEffect(() => {
     if (settingsOpen) {
-      setProvider(settings?.provider ?? 'openai');
+      const p = settings?.provider ?? 'openai';
+      const m = settings?.model ?? PROVIDER_REGISTRY.openai.defaultModel;
+      const knownModels = PROVIDER_REGISTRY[p].models;
+      setProvider(p);
       setApiKey(settings?.apiKey ?? '');
-      setModel(settings?.model ?? PROVIDER_REGISTRY.openai.defaultModel);
+      setModel(m);
+      setCustomModel(knownModels.includes(m) ? '' : m);
       setBaseUrl(settings?.baseUrl ?? PROVIDER_REGISTRY.openai.defaultBaseUrl);
       setFolderId(settings?.folderId ?? '');
       setMaxContextTokens(settings?.maxContextTokens ?? 128000);
@@ -44,16 +54,20 @@ export default function SettingsModal() {
     const entry = PROVIDER_REGISTRY[newProvider];
     setProvider(newProvider);
     setModel(entry.defaultModel);
+    setCustomModel('');
     setBaseUrl(entry.defaultBaseUrl);
     setFolderId('');
     setKeyValid(null);
   };
 
   const handleSave = () => {
+    const effectiveModel = resolveSelectValue(model, registryEntry.models) === CUSTOM_SENTINEL
+      ? customModel
+      : model;
     const newSettings: ProviderSettings = {
       provider,
       apiKey,
-      model,
+      model: effectiveModel,
       baseUrl,
       maxContextTokens,
       ...(showFolderId ? { folderId } : {}),
@@ -139,16 +153,49 @@ export default function SettingsModal() {
           </div>
 
           {/* Model */}
-          <label className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1">
             <span className="text-sm font-medium text-gray-700">Модель</span>
-            <input
-              type="text"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder="Название модели"
-              className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            />
-          </label>
+            {registryEntry.models.length > 0 ? (
+              <>
+                <select
+                  value={resolveSelectValue(model, registryEntry.models)}
+                  onChange={(e) => {
+                    if (e.target.value === CUSTOM_SENTINEL) {
+                      setModel(CUSTOM_SENTINEL);
+                      setCustomModel('');
+                    } else {
+                      setModel(e.target.value);
+                      setCustomModel('');
+                    }
+                  }}
+                  className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                >
+                  {registryEntry.models.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                  <option value={CUSTOM_SENTINEL}>Другая (ввести вручную)...</option>
+                </select>
+                {resolveSelectValue(model, registryEntry.models) === CUSTOM_SENTINEL && (
+                  <input
+                    type="text"
+                    value={customModel}
+                    onChange={(e) => setCustomModel(e.target.value)}
+                    placeholder="Название модели"
+                    autoFocus
+                    className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                )}
+              </>
+            ) : (
+              <input
+                type="text"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder="Название модели"
+                className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              />
+            )}
+          </div>
 
           {/* Base URL */}
           <label className="flex flex-col gap-1">
