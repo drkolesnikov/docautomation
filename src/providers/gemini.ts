@@ -1,4 +1,4 @@
-import type { ProviderAdapter } from './types';
+import type { ProviderAdapter, ConversationMessage } from './types';
 import { proxyFetch } from '../utils/proxyFetch';
 
 export const geminiAdapter: ProviderAdapter = {
@@ -13,7 +13,7 @@ export const geminiAdapter: ProviderAdapter = {
 
   formatRequest(
     systemPrompt: string,
-    userMessage: string,
+    messages: ConversationMessage[],
     _model: string,
     maxOutputTokens: number
   ): object {
@@ -21,12 +21,11 @@ export const geminiAdapter: ProviderAdapter = {
       system_instruction: {
         parts: [{ text: systemPrompt }],
       },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userMessage }],
-        },
-      ],
+      // Gemini uses 'model' role for assistant, not 'assistant'
+      contents: messages.map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
       generationConfig: {
         maxOutputTokens,
       },

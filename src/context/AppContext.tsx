@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, type ReactNode, type Dispatch } from 'react';
-import type { ProviderSettings, DocTypeKey } from '../providers/types';
+import type { ProviderSettings, DocTypeKey, ConversationMessage } from '../providers/types';
 
 // ---------------------------------------------------------------------------
 // Canvas / Edit types
@@ -50,6 +50,8 @@ export type AppState = {
   editHistory: EditDelta[];        // undo stack (max 20)
   editFuture: EditDelta[];         // redo stack
   editTruncated: boolean;          // true when last streamed edit hit max_tokens
+  // Multi-turn conversation context sent to the LLM
+  conversationHistory: ConversationMessage[];
   // Session history
   sessionHistory: SessionEntry[];
   historyOpen: boolean;
@@ -80,6 +82,9 @@ export type AppAction =
   | { type: 'REDO_EDIT' }
   | { type: 'SET_EDIT_TRUNCATED'; payload: boolean }
   | { type: 'CLEAR_CANVAS_STATE' }
+  // Conversation history actions
+  | { type: 'PUSH_CONVERSATION_TURN'; payload: { user: string; assistant: string } }
+  | { type: 'CLEAR_CONVERSATION' }
   // Session history actions
   | { type: 'PUSH_SESSION_ENTRY'; payload: { docType: DocTypeKey; inputText: string; outputText: string } }
   | { type: 'RESTORE_SESSION_ENTRY'; payload: SessionEntry }
@@ -153,6 +158,7 @@ function createInitialState(): AppState {
     editHistory: [],
     editFuture: [],
     editTruncated: false,
+    conversationHistory: [],
     sessionHistory: [],
     historyOpen: false,
   };
@@ -168,7 +174,9 @@ const SESSION_HISTORY_LIMIT = 15;
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'SET_DOC_TYPE':
-      return { ...state, docType: action.payload };
+      // Switching doc type invalidates the conversation — LLM context from a
+      // different document structure would confuse subsequent generations.
+      return { ...state, docType: action.payload, conversationHistory: [] };
 
     case 'SET_INPUT_TEXT':
       return { ...state, inputText: action.payload };
@@ -291,6 +299,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
         editTruncated: false,
       };
 
+    case 'PUSH_CONVERSATION_TURN':
+      return {
+        ...state,
+        conversationHistory: [
+          ...state.conversationHistory,
+          { role: 'user' as const, content: action.payload.user },
+          { role: 'assistant' as const, content: action.payload.assistant },
+        ],
+      };
+
+    case 'CLEAR_CONVERSATION':
+      return { ...state, conversationHistory: [] };
+
     case 'PUSH_SESSION_ENTRY': {
       const entry: SessionEntry = {
         id: crypto.randomUUID(),
@@ -312,6 +333,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
         inputText: action.payload.inputText,
         outputText: action.payload.outputText,
         historyOpen: false,
+        // Restored snapshot has no associated conversation context
+        conversationHistory: [],
         // Reset all canvas state — the restored document starts fresh
         selection: null,
         editInstruction: '',

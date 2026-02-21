@@ -1,7 +1,12 @@
+export type ConversationMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
 export interface ProviderAdapter {
   buildRequestUrl(baseUrl: string, model: string, apiKey: string): string;
   formatHeaders(apiKey: string): Record<string, string>;
-  formatRequest(systemPrompt: string, userMessage: string, model: string, maxOutputTokens: number): object;
+  formatRequest(systemPrompt: string, messages: ConversationMessage[], model: string, maxOutputTokens: number): object;
   parseStreamChunk(chunk: string): string | null;
   isMaxTokensTruncation(chunk: string): boolean;
   validateKey(apiKey: string, baseUrl: string): Promise<boolean>;

@@ -19,7 +19,7 @@ export function useTokenBudget(examples: Example[]): TokenBudgetResult {
   const [state] = useAppState();
 
   return useMemo(() => {
-    const { settings, docType, inputText, exampleCount } = state;
+    const { settings, docType, inputText, exampleCount, conversationHistory } = state;
 
     const maxTokens = settings?.maxContextTokens ?? 128000;
     const docConfig = DOC_TYPE_CONFIG[docType];
@@ -27,6 +27,12 @@ export function useTokenBudget(examples: Example[]): TokenBudgetResult {
 
     // Estimate tokens for the user input
     const inputTokens = estimateTokens(inputText);
+
+    // Estimate tokens consumed by previous conversation turns
+    const historyTokens = conversationHistory.reduce(
+      (sum, m) => sum + estimateTokens(m.content),
+      0
+    );
 
     // Limit the candidate examples to the configured exampleCount
     const candidateExamples = examples.slice(0, exampleCount);
@@ -39,7 +45,7 @@ export function useTokenBudget(examples: Example[]): TokenBudgetResult {
       const tryExamples = candidateExamples.slice(0, count);
       const systemPrompt = buildPrompt(docType, tryExamples);
       const promptTokens = estimateTokens(systemPrompt);
-      const total = promptTokens + inputTokens + outputReserve;
+      const total = promptTokens + historyTokens + inputTokens + outputReserve;
 
       if (total <= maxTokens) {
         effectiveExamples = tryExamples;
@@ -56,7 +62,7 @@ export function useTokenBudget(examples: Example[]): TokenBudgetResult {
     // Even with 0 examples, we are over budget
     const zeroExamplePrompt = buildPrompt(docType, []);
     const zeroPromptTokens = estimateTokens(zeroExamplePrompt);
-    const overBudgetTotal = zeroPromptTokens + inputTokens + outputReserve;
+    const overBudgetTotal = zeroPromptTokens + historyTokens + inputTokens + outputReserve;
 
     return {
       totalTokens: overBudgetTotal,
