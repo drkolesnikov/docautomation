@@ -108,6 +108,8 @@ export default function OutputPanel({
     [canUndo, canRedo, handleUndo, handleRedo]
   );
 
+  const btnCls = 'rounded-lg border border-white/10 bg-white/[0.07] px-3 py-1.5 text-sm font-medium text-white/60 hover:bg-white/[0.12] hover:text-white/90 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150';
+
   return (
     <div className="flex flex-col gap-4 h-full">
       {/* ── Output area — hidden when canvas takes over ────────────────── */}
@@ -125,12 +127,12 @@ export default function OutputPanel({
               'h-full min-h-[200px] w-full rounded-xl border px-3.5 py-3 text-sm leading-relaxed',
               'focus:outline-none focus:ring-2 whitespace-pre-wrap break-words overflow-y-auto transition-all duration-150',
               isAnyStreaming
-                ? 'border-slate-100 bg-slate-50/70 cursor-default select-none'
-                : 'border-slate-200 bg-slate-50/60 focus:border-indigo-300 focus:bg-white focus:ring-indigo-500/10',
+                ? 'border-white/[0.06] bg-white/[0.03] cursor-default select-none text-white/70'
+                : 'border-white/[0.1] bg-white/[0.06] text-white/90 focus:border-indigo-400/60 focus:bg-white/[0.09] focus:ring-indigo-500/20',
             ].join(' ')}
           />
           {!hasOutput && (
-            <span className="pointer-events-none absolute left-0 top-0 select-none px-3.5 py-3 text-sm text-slate-400">
+            <span className="pointer-events-none absolute left-0 top-0 select-none px-3.5 py-3 text-sm text-white/20">
               Здесь появится готовый документ.
             </span>
           )}
@@ -152,11 +154,10 @@ export default function OutputPanel({
             onClick={handleCopy}
             disabled={!hasOutput || isAnyStreaming}
             className={[
-              'rounded-lg border px-3 py-1.5 text-sm font-medium shadow-sm transition-all duration-150',
-              'disabled:opacity-40 disabled:cursor-not-allowed',
+              'rounded-lg border px-3 py-1.5 text-sm font-medium transition-all duration-150 disabled:opacity-25 disabled:cursor-not-allowed',
               copyFlash
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300',
+                ? 'border-emerald-400/30 bg-emerald-400/[0.15] text-emerald-300'
+                : 'border-white/10 bg-white/[0.07] text-white/60 hover:bg-white/[0.12] hover:text-white/90',
             ].join(' ')}
           >
             {copyFlash ? '✓ Скопировано' : 'Копировать'}
@@ -165,7 +166,7 @@ export default function OutputPanel({
             type="button"
             onClick={onRegenerate}
             disabled={isAnyStreaming}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
+            className={btnCls}
           >
             Заново
           </button>
@@ -175,7 +176,7 @@ export default function OutputPanel({
             onClick={handleUndo}
             disabled={!canUndo || isAnyStreaming}
             title="Отменить правку (Ctrl+Z)"
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
+            className={btnCls}
           >
             ↩
           </button>
@@ -185,7 +186,7 @@ export default function OutputPanel({
             onClick={handleRedo}
             disabled={!canRedo || isAnyStreaming}
             title="Повторить правку (Ctrl+Y)"
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
+            className={btnCls}
           >
             ↪
           </button>
