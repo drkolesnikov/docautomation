@@ -30,6 +30,10 @@ export default function OutputPanel({
   const isAnyStreaming = isStreaming || isEditStreaming;
   const canUndo = editHistory.length > 0;
   const canRedo = editFuture.length > 0;
+  // Canvas is "active" when streaming an edit or when a staged proposal is waiting —
+  // in both cases the canvas takes over the full panel height.
+  const isStaged = !isEditStreaming && state.pendingEditText !== null;
+  const isCanvasActive = isEditStreaming || isStaged;
 
   // ── Sync state → DOM ────────────────────────────────────────────────────
   // Only update the DOM when outputText changed from outside (streaming,
@@ -106,34 +110,39 @@ export default function OutputPanel({
 
   return (
     <div className="flex flex-col gap-3 h-full">
-      {/* ── Output area ────────────────────────────────────────────────── */}
-      <div className="relative flex-1 min-h-[200px]">
-        <div
-          ref={contentRef}
-          contentEditable={!isAnyStreaming}
-          suppressContentEditableWarning
-          onInput={handleInput}
-          onMouseUp={handleSelectionChange}
-          onKeyUp={handleSelectionChange}
-          onKeyDown={handleKeyDown}
-          className={[
-            'h-full min-h-[200px] w-full rounded border p-3 text-sm leading-relaxed',
-            'focus:outline-none whitespace-pre-wrap break-words overflow-y-auto',
-            isAnyStreaming
-              ? 'border-gray-200 bg-gray-50 cursor-default select-none'
-              : 'border-gray-300 bg-white focus:border-blue-500',
-          ].join(' ')}
-        />
-        {/* Placeholder */}
-        {!hasOutput && (
-          <span className="pointer-events-none absolute left-0 top-0 select-none p-3 text-sm text-gray-400">
-            Здесь появится готовый документ.
-          </span>
-        )}
-      </div>
+      {/* ── Output area — hidden when canvas takes over ────────────────── */}
+      {!isCanvasActive && (
+        <div className="relative flex-1 min-h-[200px]">
+          <div
+            ref={contentRef}
+            contentEditable={!isAnyStreaming}
+            suppressContentEditableWarning
+            onInput={handleInput}
+            onMouseUp={handleSelectionChange}
+            onKeyUp={handleSelectionChange}
+            onKeyDown={handleKeyDown}
+            className={[
+              'h-full min-h-[200px] w-full rounded border p-3 text-sm leading-relaxed',
+              'focus:outline-none whitespace-pre-wrap break-words overflow-y-auto',
+              isAnyStreaming
+                ? 'border-gray-200 bg-gray-50 cursor-default select-none'
+                : 'border-gray-300 bg-white focus:border-blue-500',
+            ].join(' ')}
+          />
+          {!hasOutput && (
+            <span className="pointer-events-none absolute left-0 top-0 select-none p-3 text-sm text-gray-400">
+              Здесь появится готовый документ.
+            </span>
+          )}
+        </div>
+      )}
 
-      {/* ── Canvas edit bar ──────────────────────────────────────────────── */}
-      {!isStreaming && <EditBar outputText={outputText} />}
+      {/* ── Canvas edit bar — flex-1 when active to fill full panel ──────── */}
+      {!isStreaming && (
+        <div className={isCanvasActive ? 'flex-1 min-h-0' : ''}>
+          <EditBar outputText={outputText} />
+        </div>
+      )}
 
       {/* ── Controls ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-2">

@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
 import { useAppState } from '../context/AppContext';
 import type { EditDelta } from '../context/AppContext';
 import { useEditStreaming } from '../hooks/useEditStreaming';
@@ -12,17 +12,46 @@ export default function EditBar({ outputText }: EditBarProps) {
   const { selection, editInstruction, isEditStreaming, pendingEditText, editMode } = state;
   const { editFragment, editDocument, stopEdit } = useEditStreaming();
   const instructionRef = useRef<HTMLInputElement>(null);
+  const streamPreviewRef = useRef<HTMLDivElement>(null);
+
+  // Local editable copy of the proposed text — initialized once streaming ends,
+  // then the user can freely edit it before accepting.
+  const [editedText, setEditedText] = useState('');
+  const prevIsEditStreamingRef = useRef(isEditStreaming);
+
+  // Initialize editable copy the moment streaming finishes
+  useEffect(() => {
+    const wasStreaming = prevIsEditStreamingRef.current;
+    prevIsEditStreamingRef.current = isEditStreaming;
+    if (wasStreaming && !isEditStreaming && pendingEditText !== null) {
+      setEditedText(pendingEditText);
+    }
+  }, [isEditStreaming, pendingEditText]);
+
+  // Reset when staging is cleared (Reject or Accept)
+  useEffect(() => {
+    if (pendingEditText === null) {
+      setEditedText('');
+    }
+  }, [pendingEditText]);
+
+  // Auto-scroll streaming preview to bottom as tokens arrive
+  useEffect(() => {
+    if (streamPreviewRef.current && isEditStreaming) {
+      streamPreviewRef.current.scrollTop = streamPreviewRef.current.scrollHeight;
+    }
+  }, [pendingEditText, isEditStreaming]);
 
   const isStaged = !isEditStreaming && pendingEditText !== null;
   const hasOutput = outputText.trim().length > 0;
 
   if (!hasOutput) return null;
 
-  // ── Streaming in progress ───────────────────────────────────────────────
+  // ── Streaming in progress ────────────────────────────────────────────────
   if (isEditStreaming) {
     return (
-      <div className="rounded border border-blue-200 bg-blue-50 p-3">
-        <div className="mb-2 flex items-center justify-between">
+      <div className="flex h-full flex-col rounded border border-blue-200 bg-blue-50 p-3">
+        <div className="mb-2 flex shrink-0 items-center justify-between">
           <span className="text-xs font-medium text-blue-700">Генерация правки…</span>
           <button
             type="button"
@@ -32,35 +61,33 @@ export default function EditBar({ outputText }: EditBarProps) {
             ■ Стоп
           </button>
         </div>
-        {pendingEditText !== null && pendingEditText.length > 0 && (
-          <div className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded border border-blue-100 bg-white p-2 text-sm leading-relaxed text-gray-700">
-            {pendingEditText}
-          </div>
-        )}
+        <div
+          ref={streamPreviewRef}
+          className="flex-1 overflow-y-auto whitespace-pre-wrap rounded border border-blue-100 bg-white p-3 text-sm leading-relaxed text-gray-700"
+        >
+          {pendingEditText ?? ''}
+        </div>
       </div>
     );
   }
 
-  // ── Staged: propose before Accept/Reject ────────────────────────────────
+  // ── Staged: review and optionally edit before Accept/Reject ─────────────
   if (isStaged) {
     const handleAccept = () => {
-      if (pendingEditText === null) return;
-
       let delta: EditDelta;
       if (editMode === 'selection' && selection !== null) {
         delta = {
           start: selection.start,
           end: selection.end,
           removed: selection.text,
-          inserted: pendingEditText,
+          inserted: editedText,
         };
       } else {
-        // Whole-document replace
         delta = {
           start: 0,
           end: outputText.length,
           removed: outputText,
-          inserted: pendingEditText,
+          inserted: editedText,
         };
       }
       dispatch({ type: 'APPLY_EDIT', payload: delta });
@@ -71,49 +98,92 @@ export default function EditBar({ outputText }: EditBarProps) {
       dispatch({ type: 'SET_EDIT_MODE', payload: null });
     };
 
-    return (
-      <div className="rounded border border-amber-200 bg-amber-50 p-3">
-        <p className="mb-2 text-xs font-medium text-amber-800">
-          {editMode === 'selection'
-            ? 'Предложенная правка фрагмента:'
-            : 'Предложенная версия документа:'}
-        </p>
+    // ── Fragment edit: side-by-side Before / After ──────────────────────
+    if (editMode === 'selection' && selection !== null) {
+      return (
+        <div className="flex h-full flex-col">
+          <p className="mb-2 shrink-0 text-xs font-medium text-gray-500">
+            Правка фрагмента —{' '}
+            <span className="font-normal text-indigo-600">
+              отредактируйте вариант «Стало» перед применением
+            </span>
+          </p>
 
-        {editMode === 'selection' && selection !== null && (
-          <div className="mb-2 grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <p className="mb-1 font-medium text-red-600">Было:</p>
-              <div className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded border border-red-100 bg-red-50 p-2 leading-relaxed text-gray-700 line-through opacity-70">
+          <div className="grid flex-1 min-h-0 grid-cols-2 gap-3 mb-3">
+            {/* Before */}
+            <div className="flex min-h-0 flex-col">
+              <p className="mb-1 shrink-0 text-xs font-semibold text-red-500">Было</p>
+              <div className="flex-1 overflow-y-auto whitespace-pre-wrap rounded border border-gray-200 border-l-4 border-l-red-300 bg-red-50 p-3 text-sm leading-relaxed text-gray-700">
                 {selection.text}
               </div>
             </div>
-            <div>
-              <p className="mb-1 font-medium text-green-600">Стало:</p>
-              <div className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded border border-green-100 bg-green-50 p-2 leading-relaxed text-gray-700">
-                {pendingEditText}
-              </div>
+
+            {/* After — editable */}
+            <div className="flex min-h-0 flex-col">
+              <p className="mb-1 shrink-0 text-xs font-semibold text-green-600">
+                Стало{' '}
+                <span className="font-normal text-gray-400">(редактируемо)</span>
+              </p>
+              <textarea
+                value={editedText}
+                onChange={(e) => setEditedText(e.target.value)}
+                className="flex-1 resize-none rounded border border-green-300 bg-green-50 p-3 text-sm leading-relaxed text-gray-800 focus:border-indigo-400 focus:outline-none"
+                spellCheck={false}
+              />
             </div>
           </div>
-        )}
 
-        {editMode === 'document' && (
-          <div className="mb-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded border border-amber-100 bg-white p-2 text-sm leading-relaxed text-gray-700">
-            {pendingEditText}
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={handleAccept}
+              disabled={!editedText.trim()}
+              className="rounded border border-green-500 bg-green-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              ✓ Принять
+            </button>
+            <button
+              type="button"
+              onClick={handleReject}
+              className="rounded border border-gray-300 bg-white px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              ✕ Отклонить
+            </button>
           </div>
-        )}
+        </div>
+      );
+    }
 
-        <div className="flex gap-2">
+    // ── Whole-doc edit: full-height editable textarea ───────────────────
+    return (
+      <div className="flex h-full flex-col">
+        <p className="mb-2 shrink-0 text-xs font-medium text-gray-500">
+          Предложенная версия документа —{' '}
+          <span className="font-normal text-indigo-600">
+            отредактируйте перед применением
+          </span>
+        </p>
+
+        <textarea
+          value={editedText}
+          onChange={(e) => setEditedText(e.target.value)}
+          className="flex-1 resize-none rounded border border-green-300 bg-green-50 p-3 text-sm leading-relaxed text-gray-800 focus:border-indigo-400 focus:outline-none mb-3"
+          spellCheck={false}
+        />
+
+        <div className="flex shrink-0 gap-2">
           <button
             type="button"
             onClick={handleAccept}
-            className="rounded border border-green-400 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-800 hover:bg-green-100 transition-colors"
+            disabled={!editedText.trim()}
+            className="rounded border border-green-500 bg-green-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            ✓ Принять
+            ✓ Принять и заменить документ
           </button>
           <button
             type="button"
             onClick={handleReject}
-            className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            className="rounded border border-gray-300 bg-white px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
           >
             ✕ Отклонить
           </button>
@@ -142,7 +212,6 @@ export default function EditBar({ outputText }: EditBarProps) {
   };
 
   if (selection !== null) {
-    // Selection mode
     const preview =
       selection.text.length > 60
         ? selection.text.slice(0, 60).replace(/\n/g, ' ') + '…'
@@ -158,7 +227,7 @@ export default function EditBar({ outputText }: EditBarProps) {
           <button
             type="button"
             onClick={() => dispatch({ type: 'SET_SELECTION', payload: null })}
-            className="text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
+            className="text-xs text-indigo-400 hover:text-indigo-700 transition-colors"
             title="Снять выделение"
           >
             ✕
