@@ -54,10 +54,11 @@ export function useStreamingResponse() {
       abortControllerRef.current = abortController;
       userStoppedRef.current = false;
 
-      // Prepare state for streaming
+      // Prepare state for streaming — clear output and any stale canvas state
       dispatch({ type: 'SET_OUTPUT_TEXT', payload: '' });
       dispatch({ type: 'SET_STREAMING', payload: true });
       dispatch({ type: 'SET_STATUS', payload: null });
+      dispatch({ type: 'CLEAR_CANVAS_STATE' });
 
       const registryEntry = PROVIDER_REGISTRY[settings.provider];
       const adapter = registryEntry.adapter;

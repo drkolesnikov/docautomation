@@ -2,6 +2,25 @@ import { createContext, useContext, useReducer, type ReactNode, type Dispatch } 
 import type { ProviderSettings, DocTypeKey } from '../providers/types';
 
 // ---------------------------------------------------------------------------
+// Canvas / Edit types
+// ---------------------------------------------------------------------------
+
+export type EditDelta = {
+  start: number;    // char offset start in outputText
+  end: number;      // char offset end (exclusive) — what was removed
+  removed: string;  // text that was replaced
+  inserted: string; // text that replaced it
+};
+
+export type SelectionState = {
+  start: number;
+  end: number;
+  text: string;
+};
+
+export type EditMode = 'selection' | 'document' | null;
+
+// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
@@ -14,6 +33,14 @@ export type AppState = {
   statusMessage: string | null;
   settingsOpen: boolean;
   exampleCount: number;
+  // Canvas / editable state
+  selection: SelectionState | null;
+  editInstruction: string;
+  isEditStreaming: boolean;
+  pendingEditText: string | null;  // accumulates streamed edit proposal
+  editMode: EditMode;              // 'selection' | 'document' — active when streaming/staged
+  editHistory: EditDelta[];        // undo stack (max 20)
+  editFuture: EditDelta[];         // redo stack
 };
 
 // ---------------------------------------------------------------------------
@@ -29,7 +56,17 @@ export type AppAction =
   | { type: 'OPEN_SETTINGS' }
   | { type: 'CLOSE_SETTINGS' }
   | { type: 'SAVE_SETTINGS'; payload: ProviderSettings }
-  | { type: 'SET_EXAMPLE_COUNT'; payload: number };
+  | { type: 'SET_EXAMPLE_COUNT'; payload: number }
+  // Canvas actions
+  | { type: 'SET_SELECTION'; payload: SelectionState | null }
+  | { type: 'SET_EDIT_INSTRUCTION'; payload: string }
+  | { type: 'SET_EDIT_STREAMING'; payload: boolean }
+  | { type: 'SET_PENDING_EDIT'; payload: string | null }
+  | { type: 'SET_EDIT_MODE'; payload: EditMode }
+  | { type: 'APPLY_EDIT'; payload: EditDelta }
+  | { type: 'UNDO_EDIT' }
+  | { type: 'REDO_EDIT' }
+  | { type: 'CLEAR_CANVAS_STATE' };
 
 // ---------------------------------------------------------------------------
 // localStorage helpers
@@ -87,11 +124,20 @@ function createInitialState(): AppState {
     outputText: '',
     isStreaming: false,
     statusMessage: null,
-    // Auto-open settings on first launch when no settings are persisted
     settingsOpen: persisted === null,
     exampleCount: persisted?.exampleCount ?? 3,
+    // Canvas
+    selection: null,
+    editInstruction: '',
+    isEditStreaming: false,
+    pendingEditText: null,
+    editMode: null,
+    editHistory: [],
+    editFuture: [],
   };
 }
+
+const MAX_HISTORY = 20;
 
 // ---------------------------------------------------------------------------
 // Reducer
@@ -122,7 +168,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'SAVE_SETTINGS': {
       const newExampleCount = state.exampleCount;
-      // Persist to localStorage directly inside the reducer
       persistSettings(action.payload, newExampleCount);
       return {
         ...state,
@@ -134,12 +179,90 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_EXAMPLE_COUNT': {
       const newCount = action.payload;
       const newState = { ...state, exampleCount: newCount };
-      // If settings exist, persist the updated example count alongside them
       if (state.settings) {
         persistSettings(state.settings, newCount);
       }
       return newState;
     }
+
+    // --- Canvas actions ---
+
+    case 'SET_SELECTION':
+      return { ...state, selection: action.payload };
+
+    case 'SET_EDIT_INSTRUCTION':
+      return { ...state, editInstruction: action.payload };
+
+    case 'SET_EDIT_STREAMING':
+      return { ...state, isEditStreaming: action.payload };
+
+    case 'SET_PENDING_EDIT':
+      return { ...state, pendingEditText: action.payload };
+
+    case 'SET_EDIT_MODE':
+      return { ...state, editMode: action.payload };
+
+    case 'APPLY_EDIT': {
+      const { start, end, removed, inserted } = action.payload;
+      const before = state.outputText.slice(0, start);
+      const after = state.outputText.slice(end);
+      const newText = before + inserted + after;
+      const delta: EditDelta = { start, end, removed, inserted };
+      const newHistory = [...state.editHistory, delta].slice(-MAX_HISTORY);
+      return {
+        ...state,
+        outputText: newText,
+        editHistory: newHistory,
+        editFuture: [],        // new edit clears redo stack
+        selection: null,
+        editInstruction: '',
+        pendingEditText: null,
+        editMode: null,
+        isEditStreaming: false,
+      };
+    }
+
+    case 'UNDO_EDIT': {
+      if (state.editHistory.length === 0) return state;
+      const delta = state.editHistory[state.editHistory.length - 1];
+      // Reverse: what was inserted is now at [start, start+inserted.length), restore removed
+      const before = state.outputText.slice(0, delta.start);
+      const after = state.outputText.slice(delta.start + delta.inserted.length);
+      const newText = before + delta.removed + after;
+      return {
+        ...state,
+        outputText: newText,
+        editHistory: state.editHistory.slice(0, -1),
+        editFuture: [...state.editFuture, delta],
+      };
+    }
+
+    case 'REDO_EDIT': {
+      if (state.editFuture.length === 0) return state;
+      const delta = state.editFuture[state.editFuture.length - 1];
+      // Re-apply: what was removed is at [start, start+removed.length), restore inserted
+      const before = state.outputText.slice(0, delta.start);
+      const after = state.outputText.slice(delta.start + delta.removed.length);
+      const newText = before + delta.inserted + after;
+      return {
+        ...state,
+        outputText: newText,
+        editHistory: [...state.editHistory, delta],
+        editFuture: state.editFuture.slice(0, -1),
+      };
+    }
+
+    case 'CLEAR_CANVAS_STATE':
+      return {
+        ...state,
+        selection: null,
+        editInstruction: '',
+        isEditStreaming: false,
+        pendingEditText: null,
+        editMode: null,
+        editHistory: [],
+        editFuture: [],
+      };
 
     default:
       return state;
