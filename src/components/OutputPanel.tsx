@@ -71,6 +71,15 @@ export default function OutputPanel({
     }
   }, [dispatch]);
 
+  // On mobile, text selection via touch fires `selectionchange` on document
+  // rather than `mouseup` on the element, so we need a document-level listener.
+  useEffect(() => {
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [handleSelectionChange]);
+
   // ── Copy ─────────────────────────────────────────────────────────────────
   const handleCopy = async () => {
     const success = await copyToClipboard(outputText);
