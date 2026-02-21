@@ -95,33 +95,35 @@ export default function SettingsModal() {
     }
   };
 
-  const inputCls = 'w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/10 transition-all duration-150';
-  const labelCls = 'text-[11px] font-semibold uppercase tracking-widest text-slate-400';
+  const inputCls = 'w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-3.5 py-2.5 text-sm text-white/90 placeholder:text-white/25 focus:border-indigo-400/60 focus:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150';
+  const selectCls = 'w-full rounded-xl border border-white/[0.12] bg-[#0d0e1e] px-3.5 py-2.5 text-sm text-white/90 focus:border-indigo-400/60 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150 cursor-pointer';
+  const labelCls = 'text-[11px] font-semibold uppercase tracking-widest text-white/35';
+  const ghostBtnCls = 'rounded-xl border border-white/10 bg-white/[0.07] px-3.5 py-2.5 text-sm font-medium text-white/70 hover:bg-white/[0.12] hover:text-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150 whitespace-nowrap';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl shadow-black/15 border border-slate-100 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+      <div className="w-full max-w-md rounded-3xl border border-white/[0.1] bg-[#0b0c1a] shadow-2xl shadow-black/60 max-h-[90vh] overflow-y-auto ring-1 ring-inset ring-white/[0.04]">
         {/* Modal header */}
-        <div className="px-6 py-5 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 shadow-sm text-[10px] font-bold text-white">
+        <div className="px-6 py-5 border-b border-white/[0.07]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400 to-violet-500 shadow-lg shadow-indigo-500/40 text-[11px] font-bold text-white">
               П
             </div>
             <div>
-              <h2 className="text-[15px] font-bold text-slate-900">Настройки</h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">Параметры подключения к LLM</p>
+              <h2 className="text-[15px] font-bold text-white">Настройки</h2>
+              <p className="text-[11px] text-white/35 mt-0.5">Параметры подключения к LLM</p>
             </div>
           </div>
         </div>
 
         <div className="px-6 py-5 flex flex-col gap-5">
           {/* Provider */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <span className={labelCls}>Провайдер</span>
             <select
               value={provider}
               onChange={(e) => handleProviderChange(e.target.value as ProviderKey)}
-              className={inputCls + ' cursor-pointer'}
+              className={selectCls}
             >
               {PROVIDER_KEYS.map((key) => (
                 <option key={key} value={key}>
@@ -132,7 +134,7 @@ export default function SettingsModal() {
           </div>
 
           {/* API Key */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <span className={labelCls}>API-ключ</span>
             <div className="flex gap-2">
               <input
@@ -145,7 +147,7 @@ export default function SettingsModal() {
               <button
                 type="button"
                 onClick={() => setShowKey(!showKey)}
-                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all duration-150 whitespace-nowrap"
+                className={ghostBtnCls}
               >
                 {showKey ? 'Скрыть' : 'Показать'}
               </button>
@@ -158,24 +160,24 @@ export default function SettingsModal() {
               type="button"
               onClick={handleValidateKey}
               disabled={!apiKey || validating}
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
+              className={ghostBtnCls}
             >
               {validating ? 'Проверка...' : 'Проверить ключ'}
             </button>
             {keyValid === true && (
-              <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
-                <span className="text-base">✓</span> Ключ действителен
+              <span className="flex items-center gap-1 text-sm font-medium text-emerald-400">
+                <span>✓</span> Ключ действителен
               </span>
             )}
             {keyValid === false && (
-              <span className="flex items-center gap-1 text-sm font-medium text-rose-600">
-                <span className="text-base">✗</span> Ключ недействителен
+              <span className="flex items-center gap-1 text-sm font-medium text-rose-400">
+                <span>✗</span> Ключ недействителен
               </span>
             )}
           </div>
 
           {/* Model */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <span className={labelCls}>Модель</span>
             {registryEntry.models.length > 0 ? (
               <div className="flex flex-col gap-2">
@@ -190,7 +192,7 @@ export default function SettingsModal() {
                       setCustomModel('');
                     }
                   }}
-                  className={inputCls + ' cursor-pointer'}
+                  className={selectCls}
                 >
                   {registryEntry.models.map((m) => (
                     <option key={m} value={m}>{m}</option>
@@ -220,7 +222,7 @@ export default function SettingsModal() {
           </div>
 
           {/* Base URL */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <span className={labelCls}>Base URL</span>
             <input
               type="text"
@@ -233,7 +235,7 @@ export default function SettingsModal() {
 
           {/* Folder ID (YandexGPT only) */}
           {showFolderId && (
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <span className={labelCls}>Folder ID</span>
               <input
                 type="text"
@@ -246,10 +248,10 @@ export default function SettingsModal() {
           )}
 
           {/* Divider */}
-          <div className="border-t border-slate-100" />
+          <div className="border-t border-white/[0.07]" />
 
           {/* Max Context Tokens */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <span className={labelCls}>Макс. контекст (токены)</span>
             <input
               type="number"
@@ -261,7 +263,7 @@ export default function SettingsModal() {
           </div>
 
           {/* Example Count */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <span className={labelCls}>Количество примеров</span>
             <input
               type="number"
@@ -275,18 +277,18 @@ export default function SettingsModal() {
         </div>
 
         {/* Actions */}
-        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
+        <div className="px-6 py-4 border-t border-white/[0.07] flex justify-end gap-2">
           <button
             type="button"
             onClick={handleCancel}
-            className="rounded-xl border border-slate-200 bg-white px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all duration-150"
+            className="rounded-xl border border-white/10 bg-white/[0.06] px-5 py-2 text-sm font-medium text-white/70 hover:bg-white/[0.1] hover:text-white transition-all duration-150"
           >
             Отмена
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-200/60 hover:from-indigo-600 hover:to-violet-600 transition-all duration-200"
+            className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 hover:from-indigo-400 hover:to-violet-400 hover:shadow-indigo-500/50 transition-all duration-200"
           >
             Сохранить
           </button>

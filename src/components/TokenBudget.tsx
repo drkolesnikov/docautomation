@@ -14,8 +14,8 @@ export default function TokenBudget({ totalTokens, maxTokens, isOverBudget }: To
     <div className={[
       'flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-150',
       isOverBudget
-        ? 'border border-rose-200 bg-rose-50 text-rose-600'
-        : 'border border-slate-200 bg-slate-50 text-slate-500',
+        ? 'border border-rose-400/30 bg-rose-400/10 text-rose-400'
+        : 'border border-white/10 bg-white/[0.06] text-white/40',
     ].join(' ')}>
       <span>~{formatTokens(totalTokens)}</span>
       <span className="opacity-40">/</span>
