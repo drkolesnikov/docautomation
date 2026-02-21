@@ -20,6 +20,14 @@ export type SelectionState = {
 
 export type EditMode = 'selection' | 'document' | null;
 
+export type SessionEntry = {
+  id: string;
+  docType: DocTypeKey;
+  inputText: string;
+  outputText: string;
+  createdAt: number;
+};
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -42,6 +50,9 @@ export type AppState = {
   editHistory: EditDelta[];        // undo stack (max 20)
   editFuture: EditDelta[];         // redo stack
   editTruncated: boolean;          // true when last streamed edit hit max_tokens
+  // Session history
+  sessionHistory: SessionEntry[];
+  historyOpen: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -68,7 +79,12 @@ export type AppAction =
   | { type: 'UNDO_EDIT' }
   | { type: 'REDO_EDIT' }
   | { type: 'SET_EDIT_TRUNCATED'; payload: boolean }
-  | { type: 'CLEAR_CANVAS_STATE' };
+  | { type: 'CLEAR_CANVAS_STATE' }
+  // Session history actions
+  | { type: 'PUSH_SESSION_ENTRY'; payload: { docType: DocTypeKey; inputText: string; outputText: string } }
+  | { type: 'RESTORE_SESSION_ENTRY'; payload: SessionEntry }
+  | { type: 'CLEAR_SESSION_HISTORY' }
+  | { type: 'TOGGLE_HISTORY' };
 
 // ---------------------------------------------------------------------------
 // localStorage helpers
@@ -137,10 +153,13 @@ function createInitialState(): AppState {
     editHistory: [],
     editFuture: [],
     editTruncated: false,
+    sessionHistory: [],
+    historyOpen: false,
   };
 }
 
 const MAX_HISTORY = 20;
+const SESSION_HISTORY_LIMIT = 15;
 
 // ---------------------------------------------------------------------------
 // Reducer
@@ -164,7 +183,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, statusMessage: action.payload };
 
     case 'OPEN_SETTINGS':
-      return { ...state, settingsOpen: true };
+      return { ...state, settingsOpen: true, historyOpen: false };
 
     case 'CLOSE_SETTINGS':
       return { ...state, settingsOpen: false };
@@ -271,6 +290,44 @@ function appReducer(state: AppState, action: AppAction): AppState {
         editFuture: [],
         editTruncated: false,
       };
+
+    case 'PUSH_SESSION_ENTRY': {
+      const entry: SessionEntry = {
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+        docType: action.payload.docType,
+        inputText: action.payload.inputText,
+        outputText: action.payload.outputText,
+      };
+      return {
+        ...state,
+        sessionHistory: [entry, ...state.sessionHistory].slice(0, SESSION_HISTORY_LIMIT),
+      };
+    }
+
+    case 'RESTORE_SESSION_ENTRY':
+      return {
+        ...state,
+        docType: action.payload.docType,
+        inputText: action.payload.inputText,
+        outputText: action.payload.outputText,
+        historyOpen: false,
+        // Reset all canvas state — the restored document starts fresh
+        selection: null,
+        editInstruction: '',
+        isEditStreaming: false,
+        pendingEditText: null,
+        editMode: null,
+        editHistory: [],
+        editFuture: [],
+        editTruncated: false,
+      };
+
+    case 'CLEAR_SESSION_HISTORY':
+      return { ...state, sessionHistory: [] };
+
+    case 'TOGGLE_HISTORY':
+      return { ...state, historyOpen: !state.historyOpen };
 
     default:
       return state;
