@@ -17,22 +17,27 @@ export const DOC_TYPE_CONFIG: Record<DocTypeKey, DocTypeConfig> = {
   pervichniy: {
     label: 'Первичный осмотр',
     sections: PERVICHNIY_SECTIONS,
-    maxOutputTokens: 3000,
+    // Complex cases (rich anamnesis, substance history, multi-episode course) expand
+    // to 1.5×–2.5× the input; 6000 comfortably covers even the longest notes.
+    maxOutputTokens: 6000,
   },
   povtorniy: {
     label: 'Повторный осмотр',
     sections: POVTORNIY_SECTIONS,
-    maxOutputTokens: 1500,
+    // Follow-ups are shorter but can include status + treatment adjustments.
+    maxOutputTokens: 3000,
   },
   vk: {
     label: 'Врачебная комиссия (ВК)',
     sections: VK_SECTIONS,
-    maxOutputTokens: 2500,
+    // Board assessments cite full history and statutory findings.
+    maxOutputTokens: 4000,
   },
   msek: {
     label: 'МСЭК',
     sections: MSEK_SECTIONS,
-    maxOutputTokens: 5000,
+    // Disability commission reports are the longest document type.
+    maxOutputTokens: 8000,
   },
 };
 

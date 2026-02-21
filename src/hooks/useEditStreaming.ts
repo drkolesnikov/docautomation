@@ -4,6 +4,7 @@ import type { EditMode } from '../context/AppContext';
 import { PROVIDER_REGISTRY } from '../providers/registry';
 import { proxyFetch } from '../utils/proxyFetch';
 import { estimateTokens } from '../utils/tokenEstimator';
+import { DOC_TYPE_CONFIG } from '../prompts/index';
 import { EDIT_SYSTEM_PROMPT, buildFragmentEditMessage, buildDocumentEditMessage } from '../utils/editPrompt';
 
 export function useEditStreaming() {
@@ -76,6 +77,7 @@ export function useEditStreaming() {
         const decoder = new TextDecoder();
         let buffer = '';
         let accumulated = '';
+        let lastChunk = '';
         const isYandex = settings.provider === 'yandexgpt';
 
         // eslint-disable-next-line no-constant-condition
@@ -100,6 +102,7 @@ export function useEditStreaming() {
 
             if (dataContent === undefined || dataContent.trim() === '[DONE]') continue;
 
+            lastChunk = dataContent;
             const parsed = adapter.parseStreamChunk(dataContent);
             if (parsed !== null) {
               if (isYandex) {
@@ -120,6 +123,7 @@ export function useEditStreaming() {
           else if (trimmed.startsWith('data:')) dataContent = trimmed.slice(5);
 
           if (dataContent !== undefined && dataContent.trim() !== '[DONE]') {
+            lastChunk = dataContent;
             const parsed = adapter.parseStreamChunk(dataContent);
             if (parsed !== null) {
               if (isYandex) {
@@ -130,6 +134,14 @@ export function useEditStreaming() {
               dispatch({ type: 'SET_PENDING_EDIT', payload: accumulated });
             }
           }
+        }
+
+        // Warn if the edit was cut short by max_tokens
+        if (lastChunk && adapter.isMaxTokensTruncation(lastChunk)) {
+          dispatch({
+            type: 'SET_STATUS',
+            payload: 'Правка может быть неполной — текст слишком длинный. Попробуйте выделить меньший фрагмент.',
+          });
         }
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError') {
@@ -152,21 +164,28 @@ export function useEditStreaming() {
   const editFragment = useCallback(
     (fullDocument: string, fragment: string, instruction: string) => {
       const userMessage = buildFragmentEditMessage(fullDocument, fragment, instruction);
-      // Output budget: at least 500 tokens, at most 2× the fragment's estimated tokens
-      const maxOutputTokens = Math.max(500, estimateTokens(fragment) * 2);
+      // Use the current doc type's full output budget as the floor — a fragment
+      // rewrite should never need more than a fresh generation of the same doc type.
+      // On top of that, allow 6× the fragment length to handle significant expansion.
+      const { docType } = state;
+      const docFloor = DOC_TYPE_CONFIG[docType].maxOutputTokens;
+      const maxOutputTokens = Math.max(docFloor, estimateTokens(fragment) * 6);
       return runEdit(userMessage, 'selection', maxOutputTokens);
     },
-    [runEdit]
+    [runEdit, state]
   );
 
   const editDocument = useCallback(
     (fullDocument: string, instruction: string) => {
       const userMessage = buildDocumentEditMessage(fullDocument, instruction);
-      // Output budget: 120% of the full document's estimated size, min 1000
-      const maxOutputTokens = Math.max(1000, Math.ceil(estimateTokens(fullDocument) * 1.2));
+      // Allow 2× the doc type's generation budget — a full rewrite with an
+      // instruction to expand could legitimately produce double the original.
+      const { docType } = state;
+      const docFloor = DOC_TYPE_CONFIG[docType].maxOutputTokens;
+      const maxOutputTokens = Math.max(docFloor * 2, Math.ceil(estimateTokens(fullDocument) * 2));
       return runEdit(userMessage, 'document', maxOutputTokens);
     },
-    [runEdit]
+    [runEdit, state]
   );
 
   return { editFragment, editDocument, stopEdit };
