@@ -70,7 +70,7 @@ export default function EditBar({ outputText }: EditBarProps) {
         </div>
         <div
           ref={streamPreviewRef}
-          className="min-h-[160px] flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl border border-white/[0.08] bg-white/[0.04] p-3.5 text-sm leading-relaxed text-white/80"
+          className="min-h-[380px] flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl border border-white/[0.08] bg-white/[0.04] p-3.5 text-sm leading-relaxed text-white/80"
         >
           {pendingEditText ?? ''}
         </div>
@@ -118,7 +118,7 @@ export default function EditBar({ outputText }: EditBarProps) {
 
           <div className="grid flex-1 min-h-0 grid-cols-1 gap-3 mb-3 sm:grid-cols-2">
             {/* Before */}
-            <div className="flex flex-col min-h-[120px] sm:min-h-0">
+            <div className="flex flex-col min-h-[180px] sm:min-h-0">
               <p className="mb-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-widest text-rose-400/80">Было</p>
               <div className="flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl border border-rose-400/15 border-l-[3px] border-l-rose-400/40 bg-rose-400/[0.06] px-3.5 py-3 text-sm leading-relaxed text-white/60">
                 {selection.text}
@@ -126,7 +126,7 @@ export default function EditBar({ outputText }: EditBarProps) {
             </div>
 
             {/* After — editable */}
-            <div className="flex flex-col min-h-[120px] sm:min-h-0">
+            <div className="flex flex-col min-h-[180px] sm:min-h-0">
               <p className="mb-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-widest text-emerald-400/80">
                 Стало{' '}
                 <span className="normal-case font-normal text-white/30 tracking-normal">(редактируемо)</span>
@@ -134,7 +134,7 @@ export default function EditBar({ outputText }: EditBarProps) {
               <textarea
                 value={editedText}
                 onChange={(e) => setEditedText(e.target.value)}
-                className="flex-1 resize-none rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] px-3.5 py-3 text-sm leading-relaxed text-white/90 focus:border-indigo-400/60 focus:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150"
+                className="flex-1 min-h-[140px] resize-none rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] px-3.5 py-3 text-sm leading-relaxed text-white/90 focus:border-indigo-400/60 focus:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150"
                 spellCheck={false}
               />
             </div>
@@ -179,7 +179,7 @@ export default function EditBar({ outputText }: EditBarProps) {
         <textarea
           value={editedText}
           onChange={(e) => setEditedText(e.target.value)}
-          className="flex-1 resize-none rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3.5 py-3 text-sm leading-relaxed text-white/90 focus:border-indigo-400/60 focus:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150 mb-3"
+          className="flex-1 min-h-[380px] resize-none rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3.5 py-3 text-sm leading-relaxed text-white/90 focus:border-indigo-400/60 focus:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-150 mb-3"
           spellCheck={false}
         />
 
