@@ -7,20 +7,27 @@ export default function StatusBar() {
   if (!statusMessage && !isStreaming) return null;
 
   return (
-    <div className="border-t border-gray-200 bg-gray-50 px-4 py-2 text-sm">
+    <div className="border-t border-slate-200/60 bg-white/80 backdrop-blur-sm px-6 py-2.5 flex items-center gap-2 min-h-[38px]">
       {isStreaming && !statusMessage && (
-        <span className="text-blue-600">Генерация...</span>
+        <div className="flex items-center gap-2">
+          <span className="flex gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:0ms]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:150ms]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:300ms]" />
+          </span>
+          <span className="text-xs font-medium text-indigo-600">Генерация...</span>
+        </div>
       )}
       {statusMessage && (
-        <div className="flex items-center gap-2">
-          <span className="text-red-600">{statusMessage}</span>
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs font-medium text-rose-600">{statusMessage}</span>
           {statusMessage.includes('API-ключ') && (
             <button
               type="button"
-              className="text-blue-600 underline hover:text-blue-800"
+              className="text-xs font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800 transition-colors"
               onClick={() => dispatch({ type: 'OPEN_SETTINGS' })}
             >
-              Настройки
+              Открыть настройки
             </button>
           )}
         </div>
