@@ -141,8 +141,7 @@ npm run build
 │   ├── context/          # React Context (состояние)
 │   └── utils/            # proxyFetch, tokenEstimator, clipboard
 ├── worker/               # Cloudflare Worker (CORS-прокси)
-├── Claude.md             # Спецификация для AI-ассистента
-└── ARCHITECTURE.md       # Обоснование архитектурных решений
+└── CLAUDE.md             # Спецификация для AI-ассистента
 ```
 
 ## Приватность
