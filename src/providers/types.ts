@@ -25,5 +25,6 @@ export interface ProviderRegistryEntry {
   defaultBaseUrl: string;
   defaultModel: string;
   label: string;
+  models: readonly string[];
   needsFolderId?: boolean;
 }
