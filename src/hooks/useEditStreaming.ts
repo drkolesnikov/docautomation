@@ -39,6 +39,7 @@ export function useEditStreaming() {
       dispatch({ type: 'SET_EDIT_MODE', payload: mode });
       dispatch({ type: 'SET_EDIT_STREAMING', payload: true });
       dispatch({ type: 'SET_PENDING_EDIT', payload: null });
+      dispatch({ type: 'SET_EDIT_TRUNCATED', payload: false });
       dispatch({ type: 'SET_STATUS', payload: null });
 
       const registryEntry = PROVIDER_REGISTRY[settings.provider];
@@ -138,6 +139,7 @@ export function useEditStreaming() {
 
         // Warn if the edit was cut short by max_tokens
         if (lastChunk && adapter.isMaxTokensTruncation(lastChunk)) {
+          dispatch({ type: 'SET_EDIT_TRUNCATED', payload: true });
           dispatch({
             type: 'SET_STATUS',
             payload: 'Правка может быть неполной — текст слишком длинный. Попробуйте выделить меньший фрагмент.',
