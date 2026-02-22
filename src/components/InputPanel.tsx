@@ -50,6 +50,7 @@ export default function InputPanel({ onGenerate, onStop }: InputPanelProps) {
     apiKey: settings?.whisperApiKey ?? '',
     baseUrl: settings?.whisperBaseUrl ?? 'https://api.openai.com',
     language: settings?.whisperLanguage ?? 'ru',
+    proxyUrl: settings?.proxyUrl,
   };
   const whisperConfigured = Boolean(settings?.whisperApiKey);
 

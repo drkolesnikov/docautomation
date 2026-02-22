@@ -93,7 +93,8 @@ export function useStreamingResponse() {
           requestUrl,
           headers,
           body,
-          abortController.signal
+          abortController.signal,
+          settings.proxyUrl,
         );
 
         if (!response.ok) {
@@ -219,15 +220,15 @@ export function useStreamingResponse() {
             });
           }
         } else if (error instanceof TypeError) {
-          // fetch throws TypeError for network failures
+          // fetch throws TypeError for network failures (incl. blocked proxy)
           dispatch({
             type: 'SET_STATUS',
-            payload: 'Ошибка сети. Проверьте интернет.',
+            payload: 'Ошибка сети. Проверьте интернет или URL прокси в настройках.',
           });
         } else {
           dispatch({
             type: 'SET_STATUS',
-            payload: 'Ошибка сети. Проверьте интернет.',
+            payload: 'Ошибка сети. Проверьте интернет или URL прокси в настройках.',
           });
         }
       } finally {

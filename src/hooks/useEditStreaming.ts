@@ -56,7 +56,7 @@ export function useEditStreaming() {
       );
 
       try {
-        const response = await proxyFetch(requestUrl, headers, body, abortController.signal);
+        const response = await proxyFetch(requestUrl, headers, body, abortController.signal, settings.proxyUrl);
 
         if (!response.ok) {
           const status = response.status;
@@ -150,9 +150,9 @@ export function useEditStreaming() {
         if (error instanceof DOMException && error.name === 'AbortError') {
           // Aborted — either user stopped or new request started; no message needed
         } else if (error instanceof TypeError) {
-          dispatch({ type: 'SET_STATUS', payload: 'Ошибка сети. Проверьте интернет.' });
+          dispatch({ type: 'SET_STATUS', payload: 'Ошибка сети. Проверьте интернет или URL прокси в настройках.' });
         } else {
-          dispatch({ type: 'SET_STATUS', payload: 'Ошибка сети. Проверьте интернет.' });
+          dispatch({ type: 'SET_STATUS', payload: 'Ошибка сети. Проверьте интернет или URL прокси в настройках.' });
         }
       } finally {
         dispatch({ type: 'SET_EDIT_STREAMING', payload: false });

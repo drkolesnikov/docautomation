@@ -60,7 +60,7 @@ export const geminiAdapter: ProviderAdapter = {
     }
   },
 
-  async validateKey(apiKey: string, baseUrl: string): Promise<boolean> {
+  async validateKey(apiKey: string, baseUrl: string, proxyUrl?: string): Promise<boolean> {
     try {
       // For Gemini, API key goes in the URL, not headers
       const url = `${baseUrl}/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
@@ -78,6 +78,8 @@ export const geminiAdapter: ProviderAdapter = {
             maxOutputTokens: 1,
           },
         },
+        undefined,
+        proxyUrl,
       );
       return response.status !== 400 && response.status !== 401 && response.status !== 403;
     } catch {
