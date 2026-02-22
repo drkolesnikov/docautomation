@@ -1,15 +1,17 @@
-const WORKER_URL = import.meta.env.VITE_WORKER_URL;
+const VITE_WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined;
 
 export async function proxyFetch(
   targetUrl: string,
   headers: Record<string, string>,
   body: object,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  workerUrl?: string
 ): Promise<Response> {
-  if (!WORKER_URL) {
-    throw new Error('VITE_WORKER_URL is not configured');
+  const url = workerUrl || VITE_WORKER_URL;
+  if (!url) {
+    throw new Error('Worker URL is not configured');
   }
-  return fetch(WORKER_URL, {
+  return fetch(url, {
     method: 'POST',
     headers: {
       ...headers,
@@ -26,12 +28,14 @@ export async function proxyFetchFormData(
   targetUrl: string,
   headers: Record<string, string>,
   formData: FormData,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  workerUrl?: string
 ): Promise<Response> {
-  if (!WORKER_URL) {
-    throw new Error('VITE_WORKER_URL is not configured');
+  const url = workerUrl || VITE_WORKER_URL;
+  if (!url) {
+    throw new Error('Worker URL is not configured');
   }
-  return fetch(WORKER_URL, {
+  return fetch(url, {
     method: 'POST',
     headers: {
       ...headers,

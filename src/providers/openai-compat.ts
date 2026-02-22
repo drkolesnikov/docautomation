@@ -57,7 +57,7 @@ export const openaiCompatAdapter: ProviderAdapter = {
     }
   },
 
-  async validateKey(apiKey: string, baseUrl: string): Promise<boolean> {
+  async validateKey(apiKey: string, baseUrl: string, proxyUrl?: string): Promise<boolean> {
     try {
       const response = await proxyFetch(
         `${baseUrl}/v1/chat/completions`,
@@ -70,6 +70,8 @@ export const openaiCompatAdapter: ProviderAdapter = {
           messages: [{ role: 'user', content: 'hi' }],
           max_tokens: 1,
         },
+        undefined,
+        proxyUrl,
       );
       // 401/403 = bad key; anything else (200, 400, 429…) = key was accepted
       return response.status !== 401 && response.status !== 403;

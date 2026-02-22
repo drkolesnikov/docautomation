@@ -17,6 +17,7 @@ export default function SettingsModal() {
   const [folderId, setFolderId] = useState(settings?.folderId ?? '');
   const [maxContextTokens, setMaxContextTokens] = useState(settings?.maxContextTokens ?? 128000);
   const [localExampleCount, setLocalExampleCount] = useState(exampleCount);
+  const [proxyUrl, setProxyUrl] = useState(settings?.proxyUrl ?? '');
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
   const [keyValid, setKeyValid] = useState<boolean | null>(null);
@@ -45,6 +46,7 @@ export default function SettingsModal() {
       setFolderId(settings?.folderId ?? '');
       setMaxContextTokens(settings?.maxContextTokens ?? 128000);
       setLocalExampleCount(exampleCount);
+      setProxyUrl(settings?.proxyUrl ?? '');
       setShowKey(false);
       setKeyValid(null);
       setWhisperApiKey(settings?.whisperApiKey ?? '');
@@ -80,6 +82,7 @@ export default function SettingsModal() {
       baseUrl,
       maxContextTokens,
       ...(showFolderId ? { folderId } : {}),
+      ...(proxyUrl.trim() ? { proxyUrl: proxyUrl.trim() } : {}),
       ...(whisperApiKey ? { whisperApiKey } : {}),
       whisperBaseUrl: whisperBaseUrl || 'https://api.openai.com',
       whisperLanguage: whisperLanguage || 'ru',
@@ -98,7 +101,7 @@ export default function SettingsModal() {
     setKeyValid(null);
     try {
       const adapter = registryEntry.adapter;
-      const result = await adapter.validateKey(apiKey, baseUrl);
+      const result = await adapter.validateKey(apiKey, baseUrl, proxyUrl.trim() || undefined);
       setKeyValid(result);
     } catch {
       setKeyValid(false);
@@ -285,6 +288,26 @@ export default function SettingsModal() {
               max={10}
               className={inputCls}
             />
+          </div>
+
+          {/* Proxy URL */}
+          <div className="flex flex-col gap-2">
+            <span className={labelCls}>URL прокси-сервера</span>
+            <input
+              type="text"
+              value={proxyUrl}
+              onChange={(e) => setProxyUrl(e.target.value)}
+              placeholder={`По умолчанию: ${import.meta.env.VITE_WORKER_URL ?? 'не задан'}`}
+              className={inputCls}
+            />
+            <p className="text-[10px] text-white/25 leading-relaxed">
+              Прокси нужен для CORS. Оставьте пустым, чтобы использовать прокси по умолчанию.
+              Если он недоступен (например, в России), разверните свой:
+            </p>
+            <ul className="text-[10px] text-white/20 leading-relaxed list-disc pl-4 space-y-0.5">
+              <li>Cloudflare Workers — <code className="font-mono">wrangler deploy</code> из папки <code className="font-mono">/worker/</code> (не работает из России)</li>
+              <li>Yandex Cloud Functions — шаблон в папке <code className="font-mono">/yandex-cloud-function/</code> (работает в России без VPN)</li>
+            </ul>
           </div>
 
           {/* Divider */}

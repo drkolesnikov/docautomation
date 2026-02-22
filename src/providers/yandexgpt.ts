@@ -95,7 +95,7 @@ export const yandexgptAdapter: ProviderAdapter = {
     }
   },
 
-  async validateKey(apiKey: string, baseUrl: string): Promise<boolean> {
+  async validateKey(apiKey: string, baseUrl: string, proxyUrl?: string): Promise<boolean> {
     try {
       const response = await proxyFetch(
         `${baseUrl}/foundationModels/v1/completion`,
@@ -114,6 +114,8 @@ export const yandexgptAdapter: ProviderAdapter = {
             { role: 'user', text: 'Hi' },
           ],
         },
+        undefined,
+        proxyUrl,
       );
       // Any response that isn't an auth error means the key is valid
       // (the request may fail due to invalid folderId, but auth is OK)

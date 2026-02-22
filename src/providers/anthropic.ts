@@ -64,7 +64,7 @@ export const anthropicAdapter: ProviderAdapter = {
     }
   },
 
-  async validateKey(apiKey: string, baseUrl: string): Promise<boolean> {
+  async validateKey(apiKey: string, baseUrl: string, proxyUrl?: string): Promise<boolean> {
     try {
       const response = await proxyFetch(
         `${baseUrl}/v1/messages`,
@@ -78,6 +78,8 @@ export const anthropicAdapter: ProviderAdapter = {
           messages: [{ role: 'user', content: 'Hi' }],
           max_tokens: 1,
         },
+        undefined,
+        proxyUrl,
       );
       // Any response that isn't a 401/403 means the key is valid
       return response.status !== 401 && response.status !== 403;

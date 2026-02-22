@@ -4,6 +4,7 @@ export interface WhisperSettings {
   apiKey: string;
   baseUrl: string;
   language: string;
+  proxyUrl?: string;
 }
 
 export async function transcribeAudio(
@@ -26,7 +27,8 @@ export async function transcribeAudio(
     url,
     { Authorization: `Bearer ${settings.apiKey}` },
     formData,
-    signal
+    signal,
+    settings.proxyUrl,
   );
 
   if (response.status === 401 || response.status === 403) {
