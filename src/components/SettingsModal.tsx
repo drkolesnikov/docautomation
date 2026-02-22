@@ -301,8 +301,13 @@ export default function SettingsModal() {
               className={inputCls}
             />
             <p className="text-[10px] text-white/25 leading-relaxed">
-              Если прокси по умолчанию заблокирован (например, в России), укажите URL собственного прокси-сервера.
+              Прокси нужен для CORS. Оставьте пустым, чтобы использовать прокси по умолчанию.
+              Если он недоступен (например, в России), разверните свой:
             </p>
+            <ul className="text-[10px] text-white/20 leading-relaxed list-disc pl-4 space-y-0.5">
+              <li>Cloudflare Workers — <code className="font-mono">wrangler deploy</code> из папки <code className="font-mono">/worker/</code> (не работает из России)</li>
+              <li>Yandex Cloud Functions — шаблон в папке <code className="font-mono">/yandex-cloud-function/</code> (работает в России без VPN)</li>
+            </ul>
           </div>
 
           {/* Divider */}

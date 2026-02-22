@@ -21,7 +21,7 @@ export default function StatusBar() {
       {statusMessage && (
         <div className="flex items-center gap-2.5">
           <span className="text-xs font-medium text-rose-400">{statusMessage}</span>
-          {statusMessage.includes('API-ключ') && (
+          {(statusMessage.includes('API-ключ') || statusMessage.includes('прокси')) && (
             <button
               type="button"
               className="text-xs font-semibold text-indigo-400 underline underline-offset-2 hover:text-indigo-300 transition-colors"
