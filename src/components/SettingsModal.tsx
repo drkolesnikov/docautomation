@@ -20,6 +20,11 @@ export default function SettingsModal() {
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
   const [keyValid, setKeyValid] = useState<boolean | null>(null);
+  // Whisper settings
+  const [whisperApiKey, setWhisperApiKey] = useState(settings?.whisperApiKey ?? '');
+  const [whisperBaseUrl, setWhisperBaseUrl] = useState(settings?.whisperBaseUrl ?? 'https://api.openai.com');
+  const [whisperLanguage, setWhisperLanguage] = useState(settings?.whisperLanguage ?? 'ru');
+  const [showWhisperKey, setShowWhisperKey] = useState(false);
 
   const CUSTOM_SENTINEL = '__custom__';
 
@@ -42,6 +47,10 @@ export default function SettingsModal() {
       setLocalExampleCount(exampleCount);
       setShowKey(false);
       setKeyValid(null);
+      setWhisperApiKey(settings?.whisperApiKey ?? '');
+      setWhisperBaseUrl(settings?.whisperBaseUrl ?? 'https://api.openai.com');
+      setWhisperLanguage(settings?.whisperLanguage ?? 'ru');
+      setShowWhisperKey(false);
     }
   }, [settingsOpen, settings, exampleCount]);
 
@@ -71,6 +80,9 @@ export default function SettingsModal() {
       baseUrl,
       maxContextTokens,
       ...(showFolderId ? { folderId } : {}),
+      ...(whisperApiKey ? { whisperApiKey } : {}),
+      whisperBaseUrl: whisperBaseUrl || 'https://api.openai.com',
+      whisperLanguage: whisperLanguage || 'ru',
     };
     dispatch({ type: 'SAVE_SETTINGS', payload: newSettings });
     dispatch({ type: 'SET_EXAMPLE_COUNT', payload: localExampleCount });
@@ -273,6 +285,71 @@ export default function SettingsModal() {
               max={10}
               className={inputCls}
             />
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-white/[0.07]" />
+
+          {/* Whisper section header */}
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 text-indigo-400/70 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            <div>
+              <p className="text-[12px] font-semibold text-white/70">Распознавание речи (Whisper)</p>
+              <p className="text-[10px] text-white/30 mt-0.5">Для ввода заметок голосом через OpenAI Whisper API</p>
+            </div>
+          </div>
+
+          {/* Whisper API Key */}
+          <div className="flex flex-col gap-2">
+            <span className={labelCls}>Whisper API-ключ</span>
+            <div className="flex gap-2">
+              <input
+                type={showWhisperKey ? 'text' : 'password'}
+                value={whisperApiKey}
+                onChange={(e) => setWhisperApiKey(e.target.value)}
+                placeholder="Введите API-ключ (OpenAI или совместимый)"
+                className={inputCls + ' flex-1'}
+              />
+              <button
+                type="button"
+                onClick={() => setShowWhisperKey(!showWhisperKey)}
+                className={ghostBtnCls}
+              >
+                {showWhisperKey ? 'Скрыть' : 'Показать'}
+              </button>
+            </div>
+          </div>
+
+          {/* Whisper Base URL */}
+          <div className="flex flex-col gap-2">
+            <span className={labelCls}>Whisper Base URL</span>
+            <input
+              type="text"
+              value={whisperBaseUrl}
+              onChange={(e) => setWhisperBaseUrl(e.target.value)}
+              placeholder="https://api.openai.com"
+              className={inputCls}
+            />
+          </div>
+
+          {/* Whisper Language */}
+          <div className="flex flex-col gap-2">
+            <span className={labelCls}>Язык распознавания</span>
+            <input
+              type="text"
+              value={whisperLanguage}
+              onChange={(e) => setWhisperLanguage(e.target.value)}
+              placeholder="ru"
+              className={inputCls}
+            />
+            <p className="text-[10px] text-white/25 leading-relaxed">
+              Код языка BCP-47 (ru, en, de…). Укажите явно для точности распознавания.
+            </p>
           </div>
         </div>
 

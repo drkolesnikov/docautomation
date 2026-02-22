@@ -23,6 +23,10 @@ export interface ProviderSettings {
   baseUrl: string;
   maxContextTokens: number;
   folderId?: string;
+  // Whisper speech-to-text settings (optional, stored alongside provider settings)
+  whisperApiKey?: string;
+  whisperBaseUrl?: string;
+  whisperLanguage?: string;
 }
 
 export interface ProviderRegistryEntry {
