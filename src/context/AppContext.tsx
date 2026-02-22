@@ -92,7 +92,7 @@ export type AppAction =
   | { type: 'TOGGLE_HISTORY' };
 
 // ---------------------------------------------------------------------------
-// localStorage helpers
+// localStorage helpers (settings — not clinical data)
 // ---------------------------------------------------------------------------
 
 const STORAGE_KEY = 'pnd-doc-settings';
@@ -134,11 +134,50 @@ function persistSettings(settings: ProviderSettings, exampleCount: number): void
 }
 
 // ---------------------------------------------------------------------------
+// sessionStorage helpers (clinical session data — cleared on tab close)
+// ---------------------------------------------------------------------------
+
+const SESSION_STORAGE_KEY = 'pnd-session';
+
+interface PersistedSession {
+  conversationHistory: ConversationMessage[];
+  sessionHistory: SessionEntry[];
+}
+
+function loadPersistedSession(): PersistedSession | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      'conversationHistory' in parsed &&
+      'sessionHistory' in parsed
+    ) {
+      return parsed as PersistedSession;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function persistSession(
+  conversationHistory: ConversationMessage[],
+  sessionHistory: SessionEntry[],
+): void {
+  const data: PersistedSession = { conversationHistory, sessionHistory };
+  sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
+}
+
+// ---------------------------------------------------------------------------
 // Initial state
 // ---------------------------------------------------------------------------
 
 function createInitialState(): AppState {
   const persisted = loadPersistedSettings();
+  const session = loadPersistedSession();
 
   return {
     settings: persisted?.provider ?? null,
@@ -158,8 +197,8 @@ function createInitialState(): AppState {
     editHistory: [],
     editFuture: [],
     editTruncated: false,
-    conversationHistory: [],
-    sessionHistory: [],
+    conversationHistory: session?.conversationHistory ?? [],
+    sessionHistory: session?.sessionHistory ?? [],
     historyOpen: false,
   };
 }
@@ -173,10 +212,12 @@ const SESSION_HISTORY_LIMIT = 15;
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'SET_DOC_TYPE':
+    case 'SET_DOC_TYPE': {
       // Switching doc type invalidates the conversation — LLM context from a
       // different document structure would confuse subsequent generations.
+      persistSession([], state.sessionHistory);
       return { ...state, docType: action.payload, conversationHistory: [] };
+    }
 
     case 'SET_INPUT_TEXT':
       return { ...state, inputText: action.payload };
@@ -299,17 +340,18 @@ function appReducer(state: AppState, action: AppAction): AppState {
         editTruncated: false,
       };
 
-    case 'PUSH_CONVERSATION_TURN':
-      return {
-        ...state,
-        conversationHistory: [
-          ...state.conversationHistory,
-          { role: 'user' as const, content: action.payload.user },
-          { role: 'assistant' as const, content: action.payload.assistant },
-        ],
-      };
+    case 'PUSH_CONVERSATION_TURN': {
+      const newConversation: ConversationMessage[] = [
+        ...state.conversationHistory,
+        { role: 'user' as const, content: action.payload.user },
+        { role: 'assistant' as const, content: action.payload.assistant },
+      ];
+      persistSession(newConversation, state.sessionHistory);
+      return { ...state, conversationHistory: newConversation };
+    }
 
     case 'CLEAR_CONVERSATION':
+      persistSession([], state.sessionHistory);
       return { ...state, conversationHistory: [] };
 
     case 'PUSH_SESSION_ENTRY': {
@@ -320,10 +362,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
         inputText: action.payload.inputText,
         outputText: action.payload.outputText,
       };
-      return {
-        ...state,
-        sessionHistory: [entry, ...state.sessionHistory].slice(0, SESSION_HISTORY_LIMIT),
-      };
+      const newSessionHistory = [entry, ...state.sessionHistory].slice(0, SESSION_HISTORY_LIMIT);
+      persistSession(state.conversationHistory, newSessionHistory);
+      return { ...state, sessionHistory: newSessionHistory };
     }
 
     case 'RESTORE_SESSION_ENTRY':
@@ -347,6 +388,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
 
     case 'CLEAR_SESSION_HISTORY':
+      persistSession(state.conversationHistory, []);
       return { ...state, sessionHistory: [] };
 
     case 'TOGGLE_HISTORY':
