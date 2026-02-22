@@ -7,7 +7,7 @@ interface InputPanelProps {
   onStop: () => void;
 }
 
-const DOC_TYPE_KEYS: DocTypeKey[] = ['pervichniy', 'povtorniy', 'vk', 'msek'];
+const DOC_TYPE_KEYS: DocTypeKey[] = ['pervichniy', 'msek'];
 
 function formatTurns(n: number): string {
   if (n === 1) return '1 обмен';
