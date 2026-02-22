@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAppState } from '../context/AppContext';
 import { DOC_TYPE_CONFIG } from '../prompts/index';
 import type { DocTypeKey } from '../providers/types';
@@ -19,6 +20,26 @@ export default function InputPanel({ onGenerate, onStop }: InputPanelProps) {
   const [state, dispatch] = useAppState();
   const { docType, inputText, isStreaming, conversationHistory } = state;
   const turnCount = conversationHistory.length / 2;
+  const [confirming, setConfirming] = useState(false);
+
+  const handleGenerateClick = () => {
+    if (turnCount > 0) {
+      setConfirming(true);
+    } else {
+      onGenerate();
+    }
+  };
+
+  const handleConfirmClearAndGenerate = () => {
+    dispatch({ type: 'CLEAR_CONVERSATION' });
+    setConfirming(false);
+    onGenerate();
+  };
+
+  const handleConfirmKeepAndGenerate = () => {
+    setConfirming(false);
+    onGenerate();
+  };
 
   return (
     <div className="flex flex-col gap-4 md:h-full">
@@ -56,22 +77,61 @@ export default function InputPanel({ onGenerate, onStop }: InputPanelProps) {
       </div>
 
       {turnCount > 0 && (
-        <div className="flex items-center justify-between rounded-lg border border-indigo-500/20 bg-indigo-500/[0.08] px-3 py-1.5">
-          <span className="text-[11px] text-indigo-300/80">
-            В контексте: {formatTurns(turnCount)}
-          </span>
-          <button
-            type="button"
-            onClick={() => dispatch({ type: 'CLEAR_CONVERSATION' })}
-            disabled={isStreaming}
-            className="text-[11px] text-white/30 transition-colors duration-150 hover:text-white disabled:opacity-30"
-          >
-            Очистить
-          </button>
+        <div className="flex flex-col gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] px-3 py-2">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400/90">
+              <span>⚠</span>
+              Заметки предыдущего пациента в контексте ({formatTurns(turnCount)})
+            </span>
+            <button
+              type="button"
+              onClick={() => { dispatch({ type: 'CLEAR_CONVERSATION' }); setConfirming(false); }}
+              disabled={isStreaming}
+              className="text-[11px] text-amber-400/60 underline underline-offset-2 transition-colors duration-150 hover:text-amber-300 disabled:opacity-30"
+            >
+              Очистить
+            </button>
+          </div>
+          <p className="text-[11px] leading-relaxed text-amber-300/60">
+            Данные прошлого сеанса будут отправлены вместе с новым запросом.
+            Очистите контекст перед работой с другим пациентом.
+          </p>
         </div>
       )}
 
-      {isStreaming ? (
+      {confirming ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-amber-500/30 bg-amber-500/[0.07] px-4 py-3">
+          <p className="text-[12px] font-semibold leading-snug text-amber-300">
+            Заметки предыдущего пациента будут отправлены в LLM вместе с текущим запросом.
+          </p>
+          <p className="text-[11px] text-amber-300/60">
+            Выберите действие:
+          </p>
+          <button
+            type="button"
+            onClick={handleConfirmClearAndGenerate}
+            className="w-full rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 px-3 py-2 text-[12px] font-semibold text-white shadow-sm shadow-indigo-500/20 hover:from-indigo-400 hover:to-violet-400 transition-all duration-150"
+          >
+            Очистить контекст и сформировать
+          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleConfirmKeepAndGenerate}
+              className="flex-1 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-[12px] font-medium text-white/50 hover:bg-white/[0.1] hover:text-white/70 transition-all duration-150"
+            >
+              Сформировать с контекстом
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              className="rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-[12px] font-medium text-white/40 hover:bg-white/[0.1] hover:text-white/60 transition-all duration-150"
+            >
+              Отмена
+            </button>
+          </div>
+        </div>
+      ) : isStreaming ? (
         <button
           type="button"
           onClick={onStop}
@@ -82,7 +142,7 @@ export default function InputPanel({ onGenerate, onStop }: InputPanelProps) {
       ) : (
         <button
           type="button"
-          onClick={onGenerate}
+          onClick={handleGenerateClick}
           disabled={!inputText.trim()}
           className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 hover:from-indigo-400 hover:to-violet-400 hover:shadow-indigo-500/50 disabled:opacity-25 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
         >
