@@ -54,7 +54,7 @@ describe('anthropicAdapter.formatRequest', () => {
     for (const m of req.messages) {
       expect(m.content).not.toBe('sys');
     }
-    expect(req.messages.every((m) => m.role !== 'system')).toBe(true);
+    expect(req.messages.every((m) => (m.role as string) !== 'system')).toBe(true);
   });
 
   it('passes messages array through correctly', () => {
