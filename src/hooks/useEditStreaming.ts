@@ -6,6 +6,8 @@ import { proxyFetch } from '../utils/proxyFetch';
 import { estimateTokens } from '../utils/tokenEstimator';
 import { DOC_TYPE_CONFIG } from '../prompts/index';
 import { EDIT_SYSTEM_PROMPT, buildFragmentEditMessage, buildDocumentEditMessage } from '../utils/editPrompt';
+import { readSSEStream } from '../utils/sseStream';
+import { getHttpErrorMessage, NETWORK_ERROR_MSG } from '../utils/httpErrors';
 
 export function useEditStreaming() {
   const [state, dispatch] = useAppState();
@@ -59,14 +61,7 @@ export function useEditStreaming() {
         const response = await proxyFetch(requestUrl, headers, body, abortController.signal, settings.proxyUrl);
 
         if (!response.ok) {
-          const status = response.status;
-          if (status === 401 || status === 403) {
-            dispatch({ type: 'SET_STATUS', payload: 'Ошибка авторизации. Проверьте API-ключ.' });
-          } else if (status === 429) {
-            dispatch({ type: 'SET_STATUS', payload: 'Превышен лимит запросов. Подождите минуту.' });
-          } else {
-            dispatch({ type: 'SET_STATUS', payload: `Ошибка сервера (${status}). Попробуйте позже.` });
-          }
+          dispatch({ type: 'SET_STATUS', payload: getHttpErrorMessage(response.status) });
           return;
         }
 
@@ -76,67 +71,20 @@ export function useEditStreaming() {
         }
 
         const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
         let accumulated = '';
-        let lastChunk = '';
         const isYandex = settings.provider === 'yandexgpt';
 
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() ?? '';
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-
-            let dataContent: string | undefined;
-            if (trimmed.startsWith('data: ')) {
-              dataContent = trimmed.slice(6);
-            } else if (trimmed.startsWith('data:')) {
-              dataContent = trimmed.slice(5);
+        const lastChunk = await readSSEStream(reader, (dataContent) => {
+          const parsed = adapter.parseStreamChunk(dataContent);
+          if (parsed !== null) {
+            if (isYandex) {
+              accumulated = parsed;
+            } else {
+              accumulated += parsed;
             }
-
-            if (dataContent === undefined || dataContent.trim() === '[DONE]') continue;
-
-            lastChunk = dataContent;
-            const parsed = adapter.parseStreamChunk(dataContent);
-            if (parsed !== null) {
-              if (isYandex) {
-                accumulated = parsed;
-              } else {
-                accumulated += parsed;
-              }
-              dispatch({ type: 'SET_PENDING_EDIT', payload: accumulated });
-            }
+            dispatch({ type: 'SET_PENDING_EDIT', payload: accumulated });
           }
-        }
-
-        // Process any remaining buffer
-        if (buffer.trim()) {
-          const trimmed = buffer.trim();
-          let dataContent: string | undefined;
-          if (trimmed.startsWith('data: ')) dataContent = trimmed.slice(6);
-          else if (trimmed.startsWith('data:')) dataContent = trimmed.slice(5);
-
-          if (dataContent !== undefined && dataContent.trim() !== '[DONE]') {
-            lastChunk = dataContent;
-            const parsed = adapter.parseStreamChunk(dataContent);
-            if (parsed !== null) {
-              if (isYandex) {
-                accumulated = parsed;
-              } else {
-                accumulated += parsed;
-              }
-              dispatch({ type: 'SET_PENDING_EDIT', payload: accumulated });
-            }
-          }
-        }
+        });
 
         // Warn if the edit was cut short by max_tokens
         if (lastChunk && adapter.isMaxTokensTruncation(lastChunk)) {
@@ -149,10 +97,8 @@ export function useEditStreaming() {
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError') {
           // Aborted — either user stopped or new request started; no message needed
-        } else if (error instanceof TypeError) {
-          dispatch({ type: 'SET_STATUS', payload: 'Ошибка сети. Проверьте интернет или URL прокси в настройках.' });
         } else {
-          dispatch({ type: 'SET_STATUS', payload: 'Ошибка сети. Проверьте интернет или URL прокси в настройках.' });
+          dispatch({ type: 'SET_STATUS', payload: NETWORK_ERROR_MSG });
         }
       } finally {
         dispatch({ type: 'SET_EDIT_STREAMING', payload: false });
