@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
 import { useAppState } from '../context/AppContext';
 import type { EditDelta } from '../context/AppContext';
 import { useEditStreaming } from '../hooks/useEditStreaming';
+import BouncingDots from './BouncingDots';
 
 interface EditBarProps {
   outputText: string;
@@ -53,11 +54,7 @@ export default function EditBar({ outputText }: EditBarProps) {
       <div className="flex h-full flex-col rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.07] p-4">
         <div className="mb-3 flex shrink-0 items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="flex gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400/60 animate-bounce [animation-delay:0ms]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400/60 animate-bounce [animation-delay:150ms]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400/60 animate-bounce [animation-delay:300ms]" />
-            </span>
+            <BouncingDots />
             <span className="text-xs font-semibold text-indigo-300">Генерация правки…</span>
           </div>
           <button

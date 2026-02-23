@@ -3,6 +3,8 @@ import { useAppState } from '../context/AppContext';
 import { PROVIDER_REGISTRY } from '../providers/registry';
 import { proxyFetch } from '../utils/proxyFetch';
 import { buildPrompt, DOC_TYPE_CONFIG } from '../prompts/index';
+import { readSSEStream } from '../utils/sseStream';
+import { getHttpErrorMessage, NETWORK_ERROR_MSG } from '../utils/httpErrors';
 import type { Example } from '../examples/types';
 import type { ConversationMessage } from '../providers/types';
 
@@ -86,7 +88,6 @@ export function useStreamingResponse() {
 
       let accumulated = '';
       let completedCleanly = false;
-      let lastChunk = '';
 
       try {
         const response = await proxyFetch(
@@ -98,108 +99,31 @@ export function useStreamingResponse() {
         );
 
         if (!response.ok) {
-          const status = response.status;
-          if (status === 401 || status === 403) {
-            dispatch({
-              type: 'SET_STATUS',
-              payload: 'Ошибка авторизации. Проверьте API-ключ.',
-            });
-          } else if (status === 429) {
-            dispatch({
-              type: 'SET_STATUS',
-              payload: 'Превышен лимит запросов. Подождите минуту.',
-            });
-          } else {
-            dispatch({
-              type: 'SET_STATUS',
-              payload: `Ошибка сервера (${status}). Попробуйте позже.`,
-            });
-          }
+          dispatch({ type: 'SET_STATUS', payload: getHttpErrorMessage(response.status) });
           return;
         }
 
         if (!response.body) {
-          dispatch({
-            type: 'SET_STATUS',
-            payload: 'Ошибка сети. Проверьте интернет.',
-          });
+          dispatch({ type: 'SET_STATUS', payload: 'Ошибка сети. Проверьте интернет.' });
           return;
         }
 
         const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
         const isYandex = settings.provider === 'yandexgpt';
 
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          // Process SSE lines: split by newlines
-          const lines = buffer.split('\n');
-          // Keep the last (possibly incomplete) line in the buffer
-          buffer = lines.pop() ?? '';
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-
-            // SSE data lines start with "data: "
-            // Some providers send "data:" without space
-            let dataContent: string | undefined;
-            if (trimmed.startsWith('data: ')) {
-              dataContent = trimmed.slice(6);
-            } else if (trimmed.startsWith('data:')) {
-              dataContent = trimmed.slice(5);
+        const lastChunk = await readSSEStream(reader, (dataContent) => {
+          const parsed = adapter.parseStreamChunk(dataContent);
+          if (parsed !== null) {
+            if (isYandex) {
+              // YandexGPT returns the full text in each chunk — replace
+              accumulated = parsed;
+            } else {
+              // All other providers return incremental deltas — append
+              accumulated += parsed;
             }
-
-            if (dataContent === undefined) continue;
-
-            // "[DONE]" is a common stream terminator
-            if (dataContent.trim() === '[DONE]') continue;
-
-            lastChunk = dataContent;
-            const parsed = adapter.parseStreamChunk(dataContent);
-
-            if (parsed !== null) {
-              if (isYandex) {
-                // YandexGPT returns the full text in each chunk — replace
-                accumulated = parsed;
-              } else {
-                // All other providers return incremental deltas — append
-                accumulated += parsed;
-              }
-              dispatch({ type: 'SET_OUTPUT_TEXT', payload: accumulated });
-            }
+            dispatch({ type: 'SET_OUTPUT_TEXT', payload: accumulated });
           }
-        }
-
-        // Process any remaining data in the buffer
-        if (buffer.trim()) {
-          let dataContent: string | undefined;
-          const trimmed = buffer.trim();
-          if (trimmed.startsWith('data: ')) {
-            dataContent = trimmed.slice(6);
-          } else if (trimmed.startsWith('data:')) {
-            dataContent = trimmed.slice(5);
-          }
-
-          if (dataContent !== undefined && dataContent.trim() !== '[DONE]') {
-            lastChunk = dataContent;
-            const parsed = adapter.parseStreamChunk(dataContent);
-            if (parsed !== null) {
-              if (isYandex) {
-                accumulated = parsed;
-              } else {
-                accumulated += parsed;
-              }
-              dispatch({ type: 'SET_OUTPUT_TEXT', payload: accumulated });
-            }
-          }
-        }
+        });
 
         // Check if the output was truncated due to max_tokens
         if (lastChunk && adapter.isMaxTokensTruncation(lastChunk)) {
@@ -214,22 +138,10 @@ export function useStreamingResponse() {
         if (error instanceof DOMException && error.name === 'AbortError') {
           // Only show "interrupted" message if not user-initiated
           if (!userStoppedRef.current) {
-            dispatch({
-              type: 'SET_STATUS',
-              payload: 'Генерация прервана.',
-            });
+            dispatch({ type: 'SET_STATUS', payload: 'Генерация прервана.' });
           }
-        } else if (error instanceof TypeError) {
-          // fetch throws TypeError for network failures (incl. blocked proxy)
-          dispatch({
-            type: 'SET_STATUS',
-            payload: 'Ошибка сети. Проверьте интернет или URL прокси в настройках.',
-          });
         } else {
-          dispatch({
-            type: 'SET_STATUS',
-            payload: 'Ошибка сети. Проверьте интернет или URL прокси в настройках.',
-          });
+          dispatch({ type: 'SET_STATUS', payload: NETWORK_ERROR_MSG });
         }
       } finally {
         if (completedCleanly && accumulated.trim()) {

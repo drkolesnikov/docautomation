@@ -1,4 +1,5 @@
 import { useAppState } from '../context/AppContext';
+import BouncingDots from './BouncingDots';
 
 export default function StatusBar() {
   const [state, dispatch] = useAppState();
@@ -10,11 +11,7 @@ export default function StatusBar() {
     <div className="border-t border-white/[0.07] bg-[#070811]/80 backdrop-blur-sm px-6 py-2.5 flex items-center gap-2 min-h-[38px]">
       {isStreaming && !statusMessage && (
         <div className="flex items-center gap-2">
-          <span className="flex gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400/60 animate-bounce [animation-delay:0ms]" />
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400/60 animate-bounce [animation-delay:150ms]" />
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400/60 animate-bounce [animation-delay:300ms]" />
-          </span>
+          <BouncingDots />
           <span className="text-xs font-medium text-indigo-400">Генерация...</span>
         </div>
       )}
