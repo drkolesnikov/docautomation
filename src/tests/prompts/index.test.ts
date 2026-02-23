@@ -33,8 +33,8 @@ describe('DOC_TYPE_CONFIG', () => {
 
 describe('buildPrompt', () => {
   const examples: Example[] = [
-    { input: 'Жалобы пациента...', output: 'Первичный осмотр:\n...' },
-    { input: 'Другие жалобы...', output: 'Повторный осмотр:\n...' },
+    { id: 'ex1', input: 'Жалобы пациента...', output: 'Первичный осмотр:\n...', tokenEstimate: 50, metadata: {} },
+    { id: 'ex2', input: 'Другие жалобы...', output: 'Повторный осмотр:\n...', tokenEstimate: 50, metadata: {} },
   ];
 
   it('returns a non-empty string', () => {
