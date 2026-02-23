@@ -1,605 +1,214 @@
-# ПНД.doc — Clinical Documentation Automation
+# CLAUDE.md
 
-React SPA that transforms free-form Russian psychiatric notes into structured clinical
-documents using LLM APIs. Clinician pastes notes → selects document type → gets formatted
-output ready for medical records.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Implementation Status
+## ПНД.doc — Clinical Documentation Automation
 
-**This is a greenfield project. Currently only documentation exists — no source code,
-no configuration files, no dependencies are present in the repository.**
+React SPA that transforms free-form Russian psychiatric notes into structured clinical documents using LLM APIs. The project is fully implemented (~36 TypeScript/TSX files, ~3 000 lines of code).
 
-The files described in the "Project Structure" section are the **target state**,
-not the current state. When implementing, create them according to the specifications below.
+## Commands
 
-## Tech Stack (pinned)
+```bash
+# Initial setup (installs deps, creates .env.local)
+./setup.sh
 
-- React 18 + TypeScript (strict mode)
-- Vite 5
-- Tailwind CSS 3
-- Cloudflare Worker (CORS proxy)
-- State: React Context + `useReducer`
+# Run both worker proxy and Vite dev server (single terminal)
+./dev.sh
+
+# Or separately:
+cd worker && npx wrangler dev        # proxy on :8787
+npm run dev                          # app on :5173
+
+# Type check
+npm run type-check                   # tsc --noEmit
+
+# Production build
+npm run build                        # outputs to dist/
+
+# Deploy Cloudflare Worker proxy
+cd worker && npx wrangler deploy
+```
+
+No test framework is configured.
 
 ## Do NOT
 
 - Add a backend, database, or server beyond the Cloudflare Worker proxy
 - Add React Router or any routing — single-page, single-view app
 - Add user accounts, authentication, or login
-- Add analytics, telemetry, logging, or error reporting services
-- Store patient text in localStorage, IndexedDB, or anywhere persistent
+- Add analytics, telemetry, or error reporting services
+- Store patient text in `localStorage`, `IndexedDB`, or anywhere persistent
 - Create separate CSS files — all styling is Tailwind utility classes
-- Add any npm dependency not listed here without asking first
-- Use class components
-
-## Development Setup (Bootstrap from Scratch)
-
-When starting implementation in an empty repo:
-
-```bash
-# 1. Scaffold the React + TypeScript + Vite project
-npm create vite@latest . -- --template react-ts
-
-# 2. Install Tailwind CSS
-npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p
-
-# 3. Install Cloudflare Workers tooling (worker directory only)
-cd worker && npm init -y && npm install -D wrangler typescript && cd ..
-
-# 4. Create environment config
-cp .env.example .env.local
-# Edit .env.local: VITE_WORKER_URL=http://localhost:8787
-```
-
-Key `package.json` scripts expected:
-```json
-{
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "type-check": "tsc --noEmit"
-  }
-}
-```
-
-`tsconfig.json` must use strict mode:
-```json
-{
-  "compilerOptions": {
-    "strict": true,
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx"
-  }
-}
-```
-
-`tailwind.config.js`:
-```js
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-  theme: { extend: {} },
-  plugins: [],
-}
-```
-
-`index.html` title must be `ПНД.doc`.
-
-## Development Workflow
-
-### Running locally
-
-```bash
-# Terminal 1 — start the Cloudflare Worker proxy
-cd worker && npx wrangler dev
-
-# Terminal 2 — start the Vite dev server
-npm run dev
-```
-
-App runs at `http://localhost:5173`. Worker runs at `http://localhost:8787`.
-`.env.local` must have `VITE_WORKER_URL=http://localhost:8787` for local dev.
-
-### Type checking
-
-```bash
-npm run type-check
-```
-
-No test framework is configured — validate correctness by running the app and
-exercising each document type with a real or test API key.
-
-### Production build
-
-```bash
-npm run build       # outputs to dist/
-```
-
-Deploy `dist/` to any static host (Cloudflare Pages, Vercel, Netlify).
-
-### Deploying the worker
-
-```bash
-cd worker
-npx wrangler login   # one-time auth
-npx wrangler deploy  # deploys to workers.dev
-```
-
-After deploy, update `VITE_WORKER_URL` in your deployment environment.
-
-## Document Types
-
-| Key | Russian name | English gloss | Typical output tokens |
-|-----|-------------|---------------|----------------------|
-| `pervichniy` | Первичный осмотр | Initial psychiatric examination | 1500–3000 |
-| `povtorniy` | Повторный осмотр | Follow-up examination | 500–1500 |
-| `vk` | Врачебная комиссия (ВК) | Medical board assessment | 1000–2500 |
-| `msek` | МСЭК | Medical-social expert commission | 2000–5000 |
-
-Each type has its own prompt template, example bank, and output token reserve.
-The upper bound of "Typical output tokens" is used as `maxOutputTokens` for API calls
-and as the output reserve in token budget calculations.
+- Add any npm dependency not listed in `package.json` without asking first
+- Use class components or `any` types
 
 ## Architecture
 
 ```
 Browser → Cloudflare Worker (CORS proxy) → LLM Provider API
-                                         ← Streamed SSE response
-       ← Streamed SSE response
+        ← Streamed SSE response           ←
 ```
 
-### Cloudflare Worker Proxy (`/worker/`)
+The browser cannot call LLM APIs directly due to CORS. All requests go through `proxyFetch` → Cloudflare Worker (`/worker/index.ts`) → provider.
 
-Pass-through proxy (~30 lines). It:
-- Accepts POST requests from the browser
-- Reads the target URL from the `x-target-url` request header
-- Validates that the URL's hostname is in the allowlist (env var `ALLOWED_HOSTS` in `wrangler.toml`)
-- Forwards the request body and **all** request headers to that URL
-- Streams the response back with permissive CORS headers (`Access-Control-Allow-Origin: *`)
-- Does NOT log, store, or inspect content
+**Storage split:**
+- `localStorage` (`pnd-doc-settings`): provider settings + example count only
+- `sessionStorage` (`pnd-session`): conversation history + session history (cleared on tab close)
+- Clinical input/output text: in-memory only, never persisted
 
-Default `ALLOWED_HOSTS`:
-```
-api.anthropic.com,api.openai.com,api.deepseek.com,generativelanguage.googleapis.com,llm.api.cloud.yandex.net
-```
+## Key Source Locations
 
-User adds custom hostnames (ollama, vLLM, etc.) to this comma-separated list.
+| Path | Purpose |
+|------|---------|
+| `src/context/AppContext.tsx` | Full state shape, reducer, 24 actions, localStorage/sessionStorage sync |
+| `src/providers/types.ts` | `ProviderAdapter`, `ProviderSettings`, `ConversationMessage`, `ProviderRegistryEntry` |
+| `src/providers/registry.ts` | `PROVIDER_REGISTRY` — single source of truth for defaults |
+| `src/prompts/index.ts` | `DOC_TYPE_CONFIG`, `buildPrompt()` |
+| `src/utils/proxyFetch.ts` | `proxyFetch` (JSON) and `proxyFetchFormData` (multipart, for Whisper) |
+| `src/hooks/useStreamingResponse.ts` | Primary generation streaming + abort |
+| `src/hooks/useEditStreaming.ts` | LLM-assisted inline edit streaming + abort |
+| `src/hooks/useAudioRecorder.ts` | Voice recording → Whisper transcription |
+| `src/utils/whisperClient.ts` | Whisper API client (via `proxyFetchFormData`) |
+| `src/utils/editPrompt.ts` | Builds prompts for fragment/document edit requests |
+| `src/utils/contentEditableUtils.ts` | DOM helpers for selection offsets in the output panel |
+| `worker/index.ts` | Cloudflare Worker CORS proxy (~52 lines) |
 
-`wrangler.toml`:
-```toml
-name = "pnd-doc-proxy"
-main = "index.ts"
-compatibility_date = "2024-01-01"
-
-[vars]
-ALLOWED_HOSTS = "api.anthropic.com,api.openai.com,api.deepseek.com,generativelanguage.googleapis.com,llm.api.cloud.yandex.net"
-```
-
-### Worker URL Configuration
-
-The React app needs to know the Worker's URL. Configured via Vite env var:
-
-```
-# .env.local (not committed)
-VITE_WORKER_URL=https://pnd-doc-proxy.<your-subdomain>.workers.dev
-```
-
-For local dev with `wrangler dev`: `VITE_WORKER_URL=http://localhost:8787`
-
-### Shared Proxy Utility (`/src/utils/proxyFetch.ts`)
-
-**All** HTTP requests to LLM APIs go through this utility. Nothing calls provider
-APIs directly — the browser cannot due to CORS.
-
-```typescript
-const WORKER_URL = import.meta.env.VITE_WORKER_URL;
-
-async function proxyFetch(
-  targetUrl: string,
-  headers: Record<string, string>,
-  body: object,
-  signal?: AbortSignal
-): Promise<Response>
-```
-
-Sends POST to `WORKER_URL` with `x-target-url` header set to `targetUrl`,
-forwards all provided `headers`, stringifies `body` as JSON. Both streaming
-requests and `validateKey` calls use this function.
-
-## LLM Provider Adapters (`/src/providers/`)
-
-Organized by **API format**, not brand.
-
-| Adapter file | Covers |
-|-------------|--------|
-| `openai-compat.ts` | OpenAI, DeepSeek, Groq, Together, ollama, vLLM, LM Studio — any `/v1/chat/completions` endpoint |
-| `anthropic.ts` | Anthropic Claude |
-| `gemini.ts` | Google Gemini |
-| `yandexgpt.ts` | YandexGPT |
-
-To add a new provider: if it speaks OpenAI Chat Completions (most do), just add a
-registry entry with a custom base URL. No new adapter code. Only write a new adapter
-for genuinely different API formats.
-
-```
-/src/providers/
-  types.ts
-  openai-compat.ts
-  anthropic.ts
-  gemini.ts
-  yandexgpt.ts
-  registry.ts
-```
-
-### Provider Adapter Interface
+## Provider Adapter Interface (actual)
 
 ```typescript
 interface ProviderAdapter {
-  // Build full request URL (some providers need query params, e.g. Gemini ?alt=sse&key=...)
   buildRequestUrl(baseUrl: string, model: string, apiKey: string): string;
-
-  // All required headers — auth AND non-auth (e.g. anthropic-version)
   formatHeaders(apiKey: string): Record<string, string>;
-
-  // Provider-specific request body
-  formatRequest(systemPrompt: string, userMessage: string, model: string, maxOutputTokens: number): object;
-
-  // Parse one SSE chunk → text content (or null if chunk is metadata/keep-alive)
+  // NOTE: messages is ConversationMessage[], NOT a plain string
+  formatRequest(systemPrompt: string, messages: ConversationMessage[], model: string, maxOutputTokens: number): object;
   parseStreamChunk(chunk: string): string | null;
-
-  // Detect if response was truncated due to max_tokens
   isMaxTokensTruncation(chunk: string): boolean;
-
-  // Light endpoint call to verify API key works. MUST use proxyFetch, not direct fetch.
-  validateKey(apiKey: string, baseUrl: string): Promise<boolean>;
+  validateKey(apiKey: string, baseUrl: string, proxyUrl?: string): Promise<boolean>;
 }
 ```
 
-**Provider-specific notes Claude must follow:**
+**Critical provider rules:**
+- **Anthropic:** `formatHeaders` must include `x-api-key` AND `anthropic-version: 2023-06-01`. System prompt goes in top-level `system` field, not in `messages`.
+- **Gemini:** API key in URL query string (`?key=...`). System prompt in `system_instruction` field. `formatHeaders` returns `{}`.
+- **YandexGPT:** Model must be full URI `gpt://<folderId>/<modelName>/latest`. Auth: `Authorization: Api-Key <key>`. YandexGPT SSE sends cumulative text, not deltas — `parseStreamChunk` returns the full accumulated text, callers must handle accordingly (see `isYandex` guard in hooks).
+- **OpenAI-compat:** System prompt is a `{role: "system"}` message prepended to `messages`.
 
-- **Anthropic:** `formatHeaders` must include both `x-api-key` and `anthropic-version: 2023-06-01`. System prompt goes in the top-level `system` field, NOT as a message with role `system`.
-- **Gemini:** API key goes in the URL query string (`?key=...`), not in headers. System prompt goes in the `system_instruction` field, NOT as a message. `formatHeaders` returns an empty object.
-- **YandexGPT:** Model field must be a full model URI: `gpt://<folderId>/<modelName>/latest`. Auth header is `Authorization: Api-Key <key>`. The adapter must construct the model URI from settings.
-- **OpenAI-compatible:** Standard `Authorization: Bearer <key>`. System prompt is a message with `role: "system"`.
-
-### Provider Settings
+## ProviderSettings (actual)
 
 ```typescript
-type ProviderKey = 'openai' | 'deepseek' | 'anthropic' | 'gemini' | 'yandexgpt' | 'custom';
-
 interface ProviderSettings {
   provider: ProviderKey;
   apiKey: string;
   model: string;
   baseUrl: string;
-  maxContextTokens: number;   // default: 128000
-  folderId?: string;          // YandexGPT only — used to construct model URI
+  maxContextTokens: number;    // default 128000
+  folderId?: string;           // YandexGPT only
+  proxyUrl?: string;           // overrides VITE_WORKER_URL at runtime (Russia deployments)
+  whisperApiKey?: string;      // Whisper speech-to-text
+  whisperBaseUrl?: string;
+  whisperLanguage?: string;
 }
 ```
 
-### Provider Registry (`registry.ts`)
+`ProviderRegistryEntry` also has a `models: readonly string[]` field for the model dropdown.
 
-Single source of truth for defaults. Adapters do NOT store default URLs or models.
+## Document Types and Token Budgets
 
-```typescript
-const PROVIDER_REGISTRY: Record<ProviderKey, {
-  adapter: ProviderAdapter;
-  defaultBaseUrl: string;
-  defaultModel: string;
-  label: string;
-  needsFolderId?: boolean;
-}> = {
-  openai:    { adapter: openaiCompat, defaultBaseUrl: 'https://api.openai.com',       label: 'OpenAI',    defaultModel: 'gpt-4o' },
-  deepseek:  { adapter: openaiCompat, defaultBaseUrl: 'https://api.deepseek.com',     label: 'DeepSeek',  defaultModel: 'deepseek-chat' },
-  anthropic: { adapter: anthropic,    defaultBaseUrl: 'https://api.anthropic.com',     label: 'Anthropic', defaultModel: 'claude-sonnet-4-20250514' },
-  gemini:    { adapter: gemini,       defaultBaseUrl: 'https://generativelanguage.googleapis.com', label: 'Google Gemini', defaultModel: 'gemini-2.0-flash' },
-  yandexgpt: { adapter: yandexgpt,   defaultBaseUrl: 'https://llm.api.cloud.yandex.net', label: 'YandexGPT', defaultModel: 'yandexgpt-lite', needsFolderId: true },
-  custom:    { adapter: openaiCompat, defaultBaseUrl: '',                              label: 'Custom (OpenAI-совместимый)', defaultModel: '' },
-};
-```
+| Key | Label | maxOutputTokens |
+|-----|-------|----------------|
+| `pervichniy` | Первичный осмотр | 6000 |
+| `povtorniy` | Повторный осмотр | 3000 |
+| `vk` | Врачебная комиссия (ВК) | 4000 |
+| `msek` | МСЭК | 8000 |
 
-## Streaming
+These values live in `DOC_TYPE_CONFIG` in `src/prompts/index.ts` and are used both as `maxOutputTokens` in API calls and as the output reserve in token budget calculations.
 
-All generation uses streaming. No non-streaming code path.
-
-- OpenAI-compatible, Anthropic, YandexGPT: `stream: true` in request body
-- Gemini: `alt=sse` in URL query string
-- Worker passes stream through without buffering
-- Browser reads via `fetch()` + `ReadableStream` + `AbortController`
-- Output renders incrementally as tokens arrive
-- "Stop" button aborts via `AbortController.abort()`
-- Once stream completes, output becomes editable
-- If `isMaxTokensTruncation` returns true on final chunk, show truncation warning
-
-## Example Bank (`/src/examples/`)
-
-Few-shot examples teach the LLM formatting, language register, and structure.
-
-```
-/src/examples/
-  pervichniy-osmotr/examples.json
-  povtorniy-osmotr/examples.json
-  vrachebnaya-komissiya/examples.json
-  msek/examples.json
-```
-
-```typescript
-interface Example {
-  id: string;
-  input: string;
-  output: string;
-  tokenEstimate: number;
-  metadata: {
-    diagnosis_category?: string;  // ICD-10 block, e.g. "F20"
-    complexity?: 'simple' | 'typical' | 'complex';
-  };
-}
-```
-
-Dynamically imported per document type (Vite code-split). If an `examples.json` is
-empty or missing, show warning in status bar: "Примеры не найдены для этого типа документа."
-and proceed with zero-shot (no examples in prompt).
-
-All example data must be **synthetic** — no real patient data.
-
-## Token Estimation (`/src/utils/tokenEstimator.ts`)
-
-```typescript
-export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 2.5);  // conservative for Cyrillic
-}
-```
-
-Prompt assembly budget check:
-1. Sum: base prompt + doc rules + N examples + user input + **doc-type output reserve**
-2. Output reserve comes from the Document Types table (use upper bound of range)
-3. If over `maxContextTokens`, reduce examples. If still over with 0 examples, block send.
-
-## Prompt Templates (`/src/prompts/`)
-
-```
-/src/prompts/
-  base-instruction.ts
-  pervichniy-osmotr.ts
-  povtorniy-osmotr.ts
-  vrachebnaya-komissiya.ts
-  msek.ts
-```
-
-### Base Instruction
-
-Shared across all document types. Must contain:
-
-```
-Ты — опытный врач-психиатр, работающий в психоневрологическом диспансере в России.
-Твоя задача — преобразовать свободные клинические заметки врача в структурированный
-медицинский документ строго в формате [тип документа].
-
-Правила:
-- Писать ТОЛЬКО на русском языке
-- Использовать стандартную психиатрическую терминологию принятую в РФ
-- Сохранять клинические факты из заметок без искажений
-- Не добавлять клинические данные, которых нет в заметках
-- Не добавлять диагноз, если он не указан в заметках
-- Следовать структуре и порядку разделов, показанным в примерах ниже
-```
-
-### Document-Specific Templates
-
-Each defines the exact section order and field names for that document type,
-derived from the few-shot examples.
-
-### Prompt Assembly
-
-```typescript
-export function buildPrompt(examples: Example[]): string {
-  return [
-    BASE_INSTRUCTION,
-    DOCUMENT_SPECIFIC_SECTIONS,
-    ...examples.map((ex, i) =>
-      `### Пример ${i + 1}\nЗаметки врача:\n${ex.input}\n\nГотовый документ:\n${ex.output}`
-    ),
-  ].join('\n\n');
-}
-```
-
-Assembled string → **system prompt**. User's clinical notes → **user message**.
-
-## UI
-
-Single view. No routing. Page title: "ПНД.doc". Below 768px, panels stack vertically.
-
-```
-┌──────────────────────────────────────────────────┐
-│  "ПНД.doc"                          [⚙ Настройки]│
-├────────────────────┬─────────────────────────────┤
-│  Doc type dropdown │  Output textarea             │
-│                    │  (read-only during stream,    │
-│  Notes textarea    │   editable after completion)  │
-│  (autofocus)       │                              │
-│                    │  [Копировать]  [Заново]       │
-│  [Сформировать]    │                              │
-│                    │  Token budget: "~3200 / 128k" │
-├────────────────────┴─────────────────────────────┤
-│  Status bar: errors, streaming state              │
-└──────────────────────────────────────────────────┘
-```
-
-### Behavior
-
-- **First launch:** No provider configured → open Settings modal automatically.
-- **Default output:** Placeholder: "Здесь появится готовый документ."
-- **During streaming:** Output read-only. Generate disabled. Stop button shown.
-- **After streaming:** Output editable. Copy and Regenerate enabled.
-- **Doc type switch:** Allowed except during active streaming.
-- **Regenerate ("Заново"):** Re-sends with current input notes.
-- **Copy ("Копировать"):** Plain text to clipboard. Flash "Скопировано!" for 2 seconds.
-- **All UI text in Russian.**
-
-### Settings Modal
-
-- Provider: dropdown from `PROVIDER_REGISTRY`
-- API key: password input, show/hide toggle
-- Model: text input, pre-filled from registry defaults
-- Base URL: text input, pre-filled from registry defaults, always visible
-- Folder ID: text input, **visible only when `needsFolderId` is true** (YandexGPT)
-- Max context tokens: number input, default 128000
-- Few-shot examples count: number input, default 3
-- "Проверить ключ" button → calls `validateKey()` via `proxyFetch`, shows ✓ or ✗
-
-**Modal behavior:**
-- Explicit "Сохранить" button (not save-on-change). "Отмена" discards changes.
-- Switching provider resets model, baseUrl, and folderId to that provider's registry defaults.
-- Empty API key is allowed (user can configure other fields first).
-
-## Error Handling
-
-All Russian. Displayed in status bar.
-
-| Trigger | Message | Action |
-|---------|---------|--------|
-| No provider configured | "Настройте провайдер в параметрах." | Auto-open settings |
-| Invalid API key (401/403) | "Ошибка авторизации. Проверьте API-ключ." | Link to settings |
-| Rate limit (429) | "Превышен лимит запросов. Подождите минуту." | Auto-retry after 60s |
-| Over token budget | "Текст слишком длинный. Уменьшите заметки или примеры." | Block send |
-| Network error | "Ошибка сети. Проверьте интернет." | Retry button |
-| Stream interrupted | "Генерация прервана." | Show partial output + Retry |
-| Output truncated (max_tokens) | "Документ может быть неполным. Попробуйте уменьшить ввод." | Show truncated output, let user edit |
-| Worker unreachable | "Прокси недоступен." | — |
-| Malformed LLM output | "Возможны ошибки форматирования." | Show raw output, let user edit |
-| No examples for doc type | "Примеры не найдены. Качество может быть ниже." | Proceed zero-shot |
-
-## AI Assistant Implementation Guide
-
-### Recommended Implementation Order
-
-Build in this sequence to keep each step testable in the browser:
-
-1. **Project scaffold** — `npm create vite`, Tailwind, tsconfig strict mode
-2. **Cloudflare Worker** (`/worker/index.ts`) — proxy first so API calls work
-3. **Provider types + registry** — `types.ts`, `registry.ts`, then each adapter
-4. **`proxyFetch` utility** — needed by all adapters
-5. **Token estimator** — simple, no dependencies
-6. **Prompt templates** — static string exports, no logic
-7. **Example bank JSON files** — create with at least 1 synthetic example each
-8. **`AppContext`** — state shape, reducer, actions
-9. **`useStreamingResponse` hook** — streaming + abort logic
-10. **`useTokenBudget` hook** — budget calculation and example reduction
-11. **UI components** — `App`, `InputPanel`, `OutputPanel`, `SettingsModal`, `StatusBar`, `TokenBudget`
-12. **`clipboard` utility** — last, only needed for copy button
-
-### State Shape
-
-The `AppContext` reducer should cover at minimum:
+## State Shape (actual)
 
 ```typescript
 type AppState = {
-  settings: ProviderSettings | null;   // null = not configured
-  docType: DocTypeKey;                 // 'pervichniy' | 'povtorniy' | 'vk' | 'msek'
+  settings: ProviderSettings | null;
+  docType: DocTypeKey;
   inputText: string;
   outputText: string;
   isStreaming: boolean;
   statusMessage: string | null;
   settingsOpen: boolean;
-  exampleCount: number;                // from settings, default 3
+  exampleCount: number;
+  // Inline LLM editing (canvas mode)
+  selection: SelectionState | null;     // char offsets in outputText
+  editInstruction: string;
+  isEditStreaming: boolean;
+  pendingEditText: string | null;       // accumulates streamed edit proposal
+  editMode: 'selection' | 'document' | null;
+  editHistory: EditDelta[];             // undo stack (max 20)
+  editFuture: EditDelta[];              // redo stack
+  editTruncated: boolean;
+  // Multi-turn context
+  conversationHistory: ConversationMessage[];
+  // Session history (last 15 completed generations)
+  sessionHistory: SessionEntry[];
+  historyOpen: boolean;
 };
 ```
 
-Settings are persisted to `localStorage` under a single key (e.g. `pnd-doc-settings`).
-All other state is ephemeral.
+Switching doc type clears `conversationHistory`. Restoring a session entry resets all canvas state and clears conversation context.
 
-### Key Conventions
+## Extended Features (beyond original spec)
+
+### Inline LLM Editing
+After generation, the user can select text in the output and type an instruction. `useEditStreaming` sends the selection + instruction to the LLM, streams back a replacement proposal, and the user accepts/rejects. Accepting dispatches `APPLY_EDIT` which mutates `outputText` and pushes to `editHistory`. Undo/redo operate on `EditDelta` (character offsets).
+
+Components: `EditBar`, `OutputPanel` (uses `contentEditableUtils` for DOM selection tracking).
+Prompts: `EDIT_SYSTEM_PROMPT`, `buildFragmentEditMessage`, `buildDocumentEditMessage` in `src/utils/editPrompt.ts`.
+
+### Multi-turn Conversation
+Each completed generation pushes `{user, assistant}` to `conversationHistory` (stored in `sessionStorage`). Subsequent generations include this history so the LLM has context of prior turns. Cleared on doc type switch or manual reset.
+
+### Session History
+Last 15 completed documents saved as `SessionEntry` objects in `sessionStorage`. Shown in `HistoryPanel`. Restoring an entry loads its `docType`, `inputText`, and `outputText` and clears conversation context.
+
+### Voice Input (Whisper)
+`useAudioRecorder` captures audio via `MediaRecorder`, sends the blob to the Whisper API through `proxyFetchFormData`. Whisper settings (`whisperApiKey`, `whisperBaseUrl`, `whisperLanguage`) are part of `ProviderSettings` and stored in `localStorage`.
+
+## proxyFetch API
+
+```typescript
+// For JSON requests (all LLM API calls)
+proxyFetch(targetUrl, headers, body, signal?, workerUrl?): Promise<Response>
+
+// For multipart/form-data (Whisper transcription)
+proxyFetchFormData(targetUrl, headers, formData, signal?, workerUrl?): Promise<Response>
+```
+
+`workerUrl` overrides `VITE_WORKER_URL`. Pass `settings.proxyUrl` here when available.
+
+## Russia Deployment
+
+For users in Russia where `*.workers.dev` is blocked, two alternative proxy options are provided:
+
+- `/yandex-proxy/` — Node.js proxy deployable to Yandex Serverless Containers
+- `/yandex-cloud-function/` — Yandex Cloud Function version
+
+Use `.env.russia.example` as a template (copy to `.env.russia`). Build with `VITE_WORKER_URL=<yandex-container-url> npm run build`, deploy `dist/` to Yandex Object Storage. Users can also override the proxy URL at runtime via `settings.proxyUrl`.
+
+## Key Conventions
 
 - **All user-visible strings in Russian.** No English in the UI.
-- **No `any` types.** TypeScript strict mode is non-negotiable.
-- **No direct `fetch()` to LLM APIs.** Always go through `proxyFetch`.
-- **No non-streaming code paths.** Every generation request uses SSE.
+- **No direct `fetch()` to LLM APIs.** Always go through `proxyFetch` or `proxyFetchFormData`.
+- **No non-streaming code paths.** Every generation uses SSE.
 - **Tailwind only for styling.** No inline style objects, no CSS files.
-- **Functional components only.** No class components.
-- **Settings persisted, clinical content not.** One localStorage key for settings; nothing else persisted.
-- **Error messages are states, not thrown exceptions.** Catch errors in hooks/utils, set `statusMessage` in context.
-- **`AbortController` must be cleaned up.** Abort on unmount and on new generation request.
+- **Error messages are states, not thrown exceptions.** Catch in hooks/utils, set `statusMessage` via dispatch.
+- **`AbortController` must be cleaned up.** Abort on unmount and on new request start.
+- **Do NOT use `useEffect` to sync localStorage/sessionStorage.** Do it inside reducer action handlers (`SAVE_SETTINGS`, `PUSH_CONVERSATION_TURN`, etc.).
 
-### Common Pitfalls to Avoid
+## Common Pitfalls
 
 - Do NOT pass the API key as a query param for non-Gemini providers.
 - Do NOT put Anthropic's system prompt inside the `messages` array.
 - Do NOT buffer the entire stream before rendering — render each chunk as it arrives.
-- Do NOT call `validateKey` on every keystroke in the settings form — only on button click.
-- Do NOT use `useEffect` to sync localStorage — do it inside the reducer's `SAVE_SETTINGS` action.
-- Do NOT forget `signal` propagation from `AbortController` through to `proxyFetch`.
-- The `isMaxTokensTruncation` check applies to the **final** chunk only; intermediate chunks return `null`.
-
-## Project Structure
-
-The following is the **target file layout** once implementation is complete.
-Currently only `CLAUDE.md` and `README.md` exist.
-
-```
-/
-├── src/
-│   ├── components/
-│   │   ├── App.tsx
-│   │   ├── InputPanel.tsx
-│   │   ├── OutputPanel.tsx
-│   │   ├── SettingsModal.tsx
-│   │   ├── StatusBar.tsx
-│   │   └── TokenBudget.tsx
-│   ├── providers/
-│   │   ├── types.ts
-│   │   ├── openai-compat.ts
-│   │   ├── anthropic.ts
-│   │   ├── gemini.ts
-│   │   ├── yandexgpt.ts
-│   │   └── registry.ts
-│   ├── prompts/
-│   │   ├── base-instruction.ts
-│   │   ├── pervichniy-osmotr.ts
-│   │   ├── povtorniy-osmotr.ts
-│   │   ├── vrachebnaya-komissiya.ts
-│   │   └── msek.ts
-│   ├── examples/
-│   │   ├── pervichniy-osmotr/examples.json
-│   │   ├── povtorniy-osmotr/examples.json
-│   │   ├── vrachebnaya-komissiya/examples.json
-│   │   └── msek/examples.json
-│   ├── hooks/
-│   │   ├── useStreamingResponse.ts
-│   │   └── useTokenBudget.ts
-│   ├── context/
-│   │   └── AppContext.tsx
-│   └── utils/
-│       ├── proxyFetch.ts
-│       ├── tokenEstimator.ts
-│       └── clipboard.ts
-├── worker/
-│   ├── index.ts
-│   └── wrangler.toml
-├── .env.example              # VITE_WORKER_URL=http://localhost:8787
-├── .env.local                # not committed — local overrides
-├── index.html
-├── vite.config.ts
-├── tailwind.config.js
-├── tsconfig.json
-├── package.json
-├── CLAUDE.md
-└── README.md
-```
-
-## Privacy
-
-- API keys: `localStorage` only
-- Clinical text: in-memory only, sent only to chosen LLM provider via Worker proxy
-- Worker: stateless pass-through, no logging
-- Example bank: synthetic data only
-- No analytics, no telemetry, no tracking
-- Settings persist in `localStorage`; clinical content does not
+- Do NOT call `validateKey` on every keystroke — only on explicit button click.
+- Do NOT forget `signal` propagation through to `proxyFetch`.
+- `isMaxTokensTruncation` applies to the **final** chunk only; intermediate chunks return `null`.
+- YandexGPT sends cumulative (not delta) text — use the `isYandex` guard in streaming hooks and replace `accumulated` instead of appending.
+- `formatRequest` takes `ConversationMessage[]` (not a plain `userMessage: string`) — build the array before calling.
