@@ -25,10 +25,10 @@ export const PROVIDER_REGISTRY: Record<ProviderKey, ProviderRegistryEntry> = {
     adapter: openaiCompatAdapter,
     defaultBaseUrl: 'https://api.deepseek.com',
     label: 'DeepSeek',
-    defaultModel: 'deepseek-chat',
+    defaultModel: 'deepseek-v4-pro',
     models: [
-      'deepseek-chat',
-      'deepseek-reasoner',
+      'deepseek-v4-flash',
+      'deepseek-v4-pro',
     ],
   },
   anthropic: {
